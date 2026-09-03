@@ -24,9 +24,9 @@ underliggande ramverk upprepas inte.
 ### FRKOMP-FR-02 — Kompletteringskontroll
 
 - **FRKOMP-FR-02.1** Ramverket ska tillhandahålla ett interface (`KompletteringKontrollInterface`)
-  med en defaultmetod `checkKomplettering()` som returnerar en tom lista, vilket innebär att
-  yrkandet är komplett. Regelimplementationer som kräver en fullständighetskontroll ska
-  överskriva metoden.
+  med en metod `checkKomplettering()` som varje regelimplementation måste implementera.
+  Metoden returnerar en lista av `KompletteringUnderlag`; en tom lista innebär att yrkandet
+  är komplett.
 - **FRKOMP-FR-02.2** Ramverket ska tillhandahålla en DTO (`KompletteringUnderlag`) som beskriver
   ett saknat attribut i yrkandet med ett maskinläsbart typidentifierare (`underlagTyp`) och en
   läsbar beskrivning (`beskrivning`). Typidentifieraren ska definieras som en lokal konstant

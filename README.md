@@ -26,9 +26,9 @@ och [rimfrost-framework-regel-oul](https://github.com/Forsakringskassan/rimfrost
 
 - **Kafka request/response** — konsumerar kompletteringsförfrågningar och skickar svar
   dynamiskt till förfrågans `replyTo`-topic.
-- **Kompletteringskontroll** — tillhandahåller `KompletteringKontrollInterface` (default
-  returnerar tom lista = komplett) och `KompletteringUnderlag`-DTO för att beskriva saknade
-  attribut.
+- **Kompletteringskontroll** — tillhandahåller `KompletteringKontrollInterface` (metoden
+  `checkKomplettering()` implementeras av regelimplementationer) och `KompletteringUnderlag`-DTO
+  för att beskriva saknade attribut.
 - **REST-flöde för komplettering** — exponerar `GET/PATCH/POST /{handlaggningId}/komplettering`
   för handläggarportalen.
 - **Korrelationslagring** — persisterar OUL-uppgifts-ID och `replyTo` per pågående
