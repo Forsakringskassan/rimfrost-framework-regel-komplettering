@@ -24,7 +24,6 @@
 
   <properties>
     <violations.maxViolations>0</violations.maxViolations>
-    <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
     <quarkus.build.skip>true</quarkus.build.skip>
     <argline></argline>
   </properties>
