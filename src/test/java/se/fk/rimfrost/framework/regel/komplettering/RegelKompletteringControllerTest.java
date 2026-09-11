@@ -207,7 +207,7 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
 
    @Test
    @DisplayName("FRKOMP-FR-04.2: PATCH returns 204 on success")
-   void should_return_200_on_patch_success() throws HandlaggningException
+   void should_return_204_on_patch_success() throws HandlaggningException
    {
       var handlaggningId = UUID.randomUUID();
       var handlaggning = createHandlaggning();
