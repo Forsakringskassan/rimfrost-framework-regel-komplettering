@@ -36,7 +36,40 @@
     <dependency>
       <groupId>se.fk.rimfrost.framework.regel</groupId>
       <artifactId>rimfrost-framework-regel</artifactId>
-      <version>1.4.1</version>
+      <version>1.4.2</version>
+    </dependency>
+    <dependency>
+      <groupId>se.fk.rimfrost.framework.regel</groupId>
+      <artifactId>rimfrost-framework-regel</artifactId>
+      <version>1.4.2</version>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>se.fk.rimfrost.framework.regel.oul</groupId>
+      <artifactId>rimfrost-framework-regel-oul</artifactId>
+      <version>0.0.5</version>
+    </dependency>
+    <dependency>
+      <groupId>se.fk.rimfrost.framework.referensdata</groupId>
+      <artifactId>rimfrost-framework-referensdata-interface</artifactId>
+      <version>0.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-junit-mockito</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.smallrye.reactive</groupId>
+      <artifactId>smallrye-reactive-messaging-in-memory</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <version>4.3.0</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -73,6 +106,12 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+        </configuration>
       </plugin>
     </plugins>
   </build>

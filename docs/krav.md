@@ -23,81 +23,70 @@ underliggande ramverk upprepas inte.
 
 ### FRKOMP-FR-02 — Kompletteringskontroll
 
-- **FRKOMP-FR-02.1** Ramverket ska tillhandahålla ett interface (`KompletteringKontrollInterface`)
-  med en metod `checkKomplettering()` som varje regelimplementation måste implementera.
-  Metoden returnerar en lista av `KompletteringUnderlag`; en tom lista innebär att yrkandet
-  är komplett.
-- **FRKOMP-FR-02.2** Ramverket ska tillhandahålla en DTO (`KompletteringUnderlag`) som beskriver
-  ett saknat attribut i yrkandet med ett maskinläsbart typidentifierare (`underlagTyp`) och en
-  läsbar beskrivning (`beskrivning`). Typidentifieraren ska definieras som en lokal konstant
-  i respektive regelrepo — aldrig i detta ramverk.
+- **FRKOMP-FR-02.1** Ramverket ska tillhandahålla ett interface (`RegelKompletteringService`)
+  med en metod `isKompletteringRequired()` som varje regelimplementation måste implementera.
+  Metoden returnerar ett boolean värde, där true indikerar att komplettering behövs och false 
+  att yrkandet är komplett.
 
 ### FRKOMP-FR-03 — Handler-flöde
 
-- **FRKOMP-FR-03.1** Vid mottagen förfrågan ska ramverket anropa `checkKomplettering()` på
+- **FRKOMP-FR-03.1** Vid mottagen förfrågan ska ramverket anropa `isKompletteringRequired()` på
   regelimplementationens service-bean.
-- **FRKOMP-FR-03.2** Om `checkKomplettering()` returnerar en tom lista ska ramverket skicka
+- **FRKOMP-FR-03.2** Om `isKompletteringRequired()` returnerar false ska ramverket skicka
   svar med `utfall = JA` direkt på `replyTo` utan att skapa någon OUL-uppgift.
-- **FRKOMP-FR-03.3** Om `checkKomplettering()` returnerar en icke-tom lista ska ramverket
-  initiera en kompletteringsuppgift via `KompletteringOulHandler.initiate()` och vänta —
+- **FRKOMP-FR-03.3** Om `isKompletteringRequired()` returnerar true ska ramverket
+  initiera en kompletteringsuppgift via `OulUppgiftService.createOulUppgift()` och vänta —
   inget Kafka-svar skickas i detta steg.
-- **FRKOMP-FR-03.4** Om `initiate()` kastar `OulException` ska ramverket skicka ett felsvar med
+- **FRKOMP-FR-03.4** Om `OulUppgiftService.createOulUppgift()` kastar `OulException` ska ramverket skicka ett felsvar med
+  felkod `RIMFROST_OTHER`.
+- **FRKOMP-FR-03.5** Om exception kastas vid läsning av handläggning ska ramverket skicka ett felsvar med
+    relevant felkod.
+- **FRKOMP-FR-03.6** Om exception kastas vid anrop till `isKompletteringRequired()` ska ramverket skicka ett felsvar med
   felkod `RIMFROST_OTHER`.
 
 ### FRKOMP-FR-04 — Kompletteringsflöde via REST
 
-- **FRKOMP-FR-04.1** Ramverket ska exponera `GET /{handlaggningId}/komplettering` som returnerar
+- **FRKOMP-FR-04.1** Ramverket ska exponera `GET /{handlaggningId}` som returnerar
   den information handläggaren behöver för att registrera kompletterande uppgifter. Informationen
-  hämtas via regelns implementation av `KompletteringSvarServiceInterface`.
-- **FRKOMP-FR-04.2** Ramverket ska exponera `PATCH /{handlaggningId}/komplettering` för
+  hämtas via regelns implementation av `RegelKompletteringService`.
+- **FRKOMP-FR-04.2** Ramverket ska exponera `PATCH /{handlaggningId}` för
   registrering av kompletterande uppgifter via regelns implementation av
-  `KompletteringSvarServiceInterface`.
-- **FRKOMP-FR-04.3** Ramverket ska exponera `POST /{handlaggningId}/komplettering/done`. Vid anrop
-  ska `checkKomplettering()` anropas för att verifiera att yrkandet nu är komplett. Om yrkandet
+  `RegelKompletteringService`.
+- **FRKOMP-FR-04.3** Ramverket ska exponera `POST /{handlaggningId}/done`. Vid anrop
+  ska `isKompletteringRequired()` anropas för att verifiera att yrkandet nu är komplett. Om yrkandet
   fortfarande saknar uppgifter ska HTTP 422 returneras.
-- **FRKOMP-FR-04.4** Om `checkKomplettering()` returnerar tom lista ska ramverket skicka svar
-  med `utfall = JA` på den `replyTo` som lagrats för den pågående kompletteringsomgången.
-- **FRKOMP-FR-04.5** `POST /komplettering/done` ska returnera HTTP 409 om timeout redan har
+- **FRKOMP-FR-04.4** Om `isKompletteringRequired()` returnerar false ska ramverket skicka svar
+  med `utfall = JA` på den `replyTo` topic som lagrats för den pågående kompletteringsomgången.
+- **FRKOMP-FR-04.5** `POST /done` ska returnera HTTP 409 om korrelationstillståndet inte kan hittas, t.ex. för att timeout redan har
   tömt korrelationstillståndet.
-- **FRKOMP-FR-04.6** Om avslutning av OUL-uppgiften misslyckas under `POST /komplettering/done`
-  ska felet loggas, svaret ändå skickas på `replyTo` och HTTP 207 returneras för att signalera
-  att kompletteringen är accepterad men att OUL-uppgiften eventuellt fortfarande är öppen.
-- **FRKOMP-FR-04.7** `KompletteringSvarServiceInterface` ska använda en enda typparameter för
+- **FRKOMP-FR-04.6** `RegelKompletteringService` ska använda en enda typparameter för
   svarsdata: samma datastruktur används både som returvärde för `readSvarData` (GET) och som
   request body för `registerSvar` (PATCH).
+- **FRKOMP-FR-04.7** `POST /done` ska returnera HTTP 404 om handläggning inte kan hittas.
 
-### FRKOMP-FR-05 — Persistens av korrelationstillstånd
+### FRKOMP-FR-05 — Kontroll av skyddad identitet (SID)
 
-- **FRKOMP-FR-05.1** Ramverket ska tillhandahålla ett persistenslager (`KompletteringStorage`)
-  för att lagra och hämta korrelationstillstånd per `handlaggningId` under en pågående
-  kompletteringsomgång. Tillståndet ska innehålla åtminstone OUL-uppgifts-ID och den `replyTo`
-  som svaret ska skickas till när kompletteringen avslutas.
-- **FRKOMP-FR-05.2** `KompletteringStorage` ska returnera ett tomt värde (`Optional.empty()`)
-  vid sökning på ett okänt `handlaggningId` utan att kasta exception.
-- **FRKOMP-FR-05.3** `KompletteringStorage` ska hantera borttagning av ett frånvarande
-  `handlaggningId` utan att kasta exception.
-
-### FRKOMP-FR-06 — Timeout-hantering
-
-- **FRKOMP-FR-06.1** Ramverket ska tillhandahålla en operation (`handleKompletteringTimeout`)
-  som avslutar den öppna OUL-uppgiften, tar bort korrelationstillståndet och skickar ett
-  Kafka-svar med `utfall = ERROR` och `RegelErrorInformation` på den lagrade `replyTo` när
-  kompletteringstimern löper ut.
-- **FRKOMP-FR-06.2** `handleKompletteringTimeout` ska vara säker att anropa även om
-  handläggaren redan avslutat kompletteringen (dvs. tillståndet redan är borttaget) — operationen
-  ska logga och returnera utan exception.
-- **FRKOMP-FR-06.3** Om avslutning av OUL-uppgiften misslyckas under timeout-hanteringen ska
-  felet loggas och korrelationstillståndet ändå tas bort, utan att kasta exception.
-
-### FRKOMP-FR-07 — Skapande av komplettering-OUL
-
-- **FRKOMP-FR-07.1** Om lagring av korrelationstillståndet misslyckas efter att OUL-uppgiften
-  har skapats i `KompletteringOulHandler.initiate`, ska ramverket best-effort avsluta den
-  nyskapade OUL-uppgiften via `endOperativUppgift`. Det ursprungliga persistensfelet ska alltid
-  kastas vidare till anroparen.
-- **FRKOMP-FR-07.2** Om avslutningen av OUL-uppgiften enligt FRKOMP-FR-07.1 också misslyckas
-  ska felet loggas med `uppgiftId` och `handlaggningId` för manuell rekonsiliering, utan att
-  maskera det ursprungliga persistensfelet.
+- **FRKOMP-FR-05.1** Innan `readSvarData()` anropas vid `GET /{handlaggningId}` ska ramverket kontrollera
+  om någon av handläggningsärendets individer har skyddad identitet via SID-tjänsten.
+- **FRKOMP-FR-05.2** Individerna hämtas från `handlaggning.yrkande().individYrkandeRoller()` och
+  skickas i en `POST /sid/status`-förfrågan till SID-tjänsten.
+- **FRKOMP-FR-05.3** Om en eller flera individer har skyddad identitet ska ramverket returnera
+  HTTP 403 och `readSvarData()` ska inte anropas.
+- **FRKOMP-FR-05.4** Fel från SID-tjänsten ska resultera i väldefinierade HTTP-statuskoder på samma
+  sätt som fel mot handläggningstjänsten: 404, 400, 503 respektive 500.
+- **FRKOMP-FR-05.5** SID-kontrollen ska ingå i ramverket och gälla automatiskt för alla
+  regelimplementationer utan kodändringar. Varje regelimplementation måste konfigurera `sid.api.base-url`
+  med adressen till SID-tjänsten.
+- **FRKOMP-FR-05.6** Om en eller flera individer har skyddad identitet ska ramverket ta bort tilldelningen av OUL-uppgiften
+  innan HTTP 403 returneras, via `tryUnassignOulUppgift` som tillhandahålls av
+  `rimfrost-framework-regel-oul`, så att uppgiften återgår till otilldelat läge och kan tilldelas
+  handläggare med SID-rättigheter.
+- **FRKOMP-FR-05.7** Unassign ska alltid försökas oavsett om uppgiften är tilldelad eller inte —
+  OUL-tjänsten förväntas hantera anropet korrekt i båda fallen. Om inget uppgifts-ID finns lagrat
+  för handläggningsärendet (t.ex. vid en oväntad timingrelaterad situation) ska unassign-försöket
+  hoppas över utan fel — HTTP 403 ska ändå returneras.
+- **FRKOMP-FR-05.8** Fel vid unassign av OUL-uppgiften ska loggas men ska inte påverka det
+  returnerade HTTP 403-svaret. `tryUnassignOulUppgift` hanterar loggning och sväljer felet internt.
 
 ---
 
