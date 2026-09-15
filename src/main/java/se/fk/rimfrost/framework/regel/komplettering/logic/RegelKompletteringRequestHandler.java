@@ -144,9 +144,12 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
       }
       catch (OulServiceException e)
       {
-         LOGGER.error("Error in handleKompletteringDone() while trying to end operativ uppgift for handlaggningId: {}",
-               handlaggningId, e);
-         throw new EndOulUppgiftException(e.getMessage(), e);
+         if (e.getErrorType() != OulServiceException.ErrorType.NOT_FOUND)
+         {
+            LOGGER.error("Error in handleKompletteringDone() while trying to end operativ uppgift for handlaggningId: {}",
+                  handlaggningId, e);
+            throw new EndOulUppgiftException(e.getMessage(), e);
+         }
       }
 
       sendRegelSuccessResponse(handlaggningId, correlation.cloudEventData(), Utfall.JA, correlation.replyTopic());

@@ -255,6 +255,24 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
    }
 
    @Test
+   @DisplayName("FRKOMP-FR-04.8: 404 end fault is treated as 200 at end oul uppgift")
+   void should_not_throw_end_oul_uppgift_exception_on_oul_uppgift_end_failure_with_404_at_done_handling() throws Exception
+   {
+      var handlaggningId = UUID.randomUUID();
+      var handlaggning = createHandlaggning();
+
+      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
+      Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(false);
+      Mockito.doThrow(new OulServiceException(OulServiceException.ErrorType.NOT_FOUND, "")).when(oulUppgiftService)
+            .endOulUppgift(eq(DEFAULT_UPPGIFT_ID), Mockito.any());
+
+      regelKompletteringRequestHandler.handleKompletteringDone(handlaggningId);
+
+      var response = regelKafkaConnector.waitForRegelResponse();
+      assertEquals(Utfall.JA, response.getData().getUtfall());
+   }
+
+   @Test
    @DisplayName("Handlaggning update failure does not throw exception")
    void should_not_throw_on_handlaggning_update_failure_at_done_handling() throws Exception
    {
