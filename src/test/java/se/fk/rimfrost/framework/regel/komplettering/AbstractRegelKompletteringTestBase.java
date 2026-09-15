@@ -6,15 +6,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableUppgift;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableUppgiftSpecifikation;
-import se.fk.rimfrost.framework.oul.model.ImmutableOperativUppgift;
-import se.fk.rimfrost.framework.oul.model.ImmutableProcessInfo;
 import se.fk.rimfrost.framework.regel.RegelTestBase;
 import se.fk.rimfrost.framework.regel.logic.entity.ImmutableCloudEventData;
 import se.fk.rimfrost.framework.regel.oul.logic.OulUppgiftService;
 import se.fk.rimfrost.framework.regel.oul.logic.entity.ImmutableOulCorrelationData;
 
 import java.time.OffsetDateTime;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -99,25 +96,8 @@ public abstract class AbstractRegelKompletteringTestBase extends RegelTestBase
     */
    private void configureOulUppgiftServiceMocks() throws Exception
    {
-      Mockito.when(oulUppgiftService.createOulUppgift(Mockito.any()))
-            .thenReturn(defaultOperativUppgift());
-
       Mockito.when(oulUppgiftService.getCorrelationData(Mockito.any()))
             .thenReturn(defaultOulCorrelationData());
-   }
-
-   private se.fk.rimfrost.framework.oul.model.OperativUppgift defaultOperativUppgift()
-   {
-      var processInfo = ImmutableProcessInfo.builder()
-            .replyTopic(responseTopic)
-            .cloudeventAttributes(Map.of())
-            .build();
-      return ImmutableOperativUppgift.builder()
-            .uppgiftId(DEFAULT_UPPGIFT_ID)
-            .handlaggningId(UUID.randomUUID())
-            .status(PLANERAD_STATUS)
-            .processInfo(processInfo)
-            .build();
    }
 
    private se.fk.rimfrost.framework.regel.oul.logic.entity.OulCorrelationData defaultOulCorrelationData()
