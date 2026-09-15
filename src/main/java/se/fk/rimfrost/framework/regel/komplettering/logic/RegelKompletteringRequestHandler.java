@@ -1,23 +1,17 @@
 package se.fk.rimfrost.framework.regel.komplettering.logic;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.fk.rimfrost.framework.handlaggning.adapter.HandlaggningAdapter;
 import se.fk.rimfrost.framework.handlaggning.exception.HandlaggningException;
 import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableHandlaggningUpdate;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableUppgift;
-import se.fk.rimfrost.framework.oul.exception.OulException;
-import se.fk.rimfrost.framework.oul.model.Erbjudande;
-import se.fk.rimfrost.framework.oul.model.ImmutableErbjudande;
 import se.fk.rimfrost.framework.referensdata.ErbjudandeReferensdataInterface;
 import se.fk.rimfrost.framework.regel.RegelErrorInformation;
 import se.fk.rimfrost.framework.regel.Utfall;
 import se.fk.rimfrost.framework.regel.error.RegelFelkod;
-import se.fk.rimfrost.framework.regel.integration.config.RegelConfigProviderYaml;
 import se.fk.rimfrost.framework.regel.integration.kafka.dto.ImmutableRegelResponse;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.CorrelationDataReadException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.HandlaggningNotFoundException;
@@ -26,13 +20,15 @@ import se.fk.rimfrost.framework.regel.komplettering.logic.exception.Kompletterin
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.EndOulUppgiftException;
 import se.fk.rimfrost.framework.regel.logic.RegelCancelledException;
 import se.fk.rimfrost.framework.regel.logic.RegelRequestHandlerBase;
-import se.fk.rimfrost.framework.regel.logic.config.RegelConfig;
 import se.fk.rimfrost.framework.regel.logic.dto.RegelDataRequest;
 import se.fk.rimfrost.framework.regel.logic.entity.CloudEventData;
 import se.fk.rimfrost.framework.regel.oul.logic.CloudEventAttributesMapper;
 import se.fk.rimfrost.framework.regel.oul.logic.OulUppgiftService;
+import se.fk.rimfrost.framework.regel.oul.logic.entity.Erbjudande;
+import se.fk.rimfrost.framework.regel.oul.logic.entity.ImmutableErbjudande;
 import se.fk.rimfrost.framework.regel.oul.logic.entity.ImmutableOulUppgiftSpec;
 import se.fk.rimfrost.framework.regel.oul.logic.entity.OulCorrelationData;
+import se.fk.rimfrost.framework.regel.oul.logic.exception.OulServiceException;
 import se.fk.rimfrost.framework.regel.presentation.kafka.RegelRequestHandlerInterface;
 
 import java.time.OffsetDateTime;
@@ -146,7 +142,7 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
       {
          oulUppgiftService.endOulUppgift(correlation.oulUppgiftId(), "Uppgift klar");
       }
-      catch (OulException e)
+      catch (OulServiceException e)
       {
          LOGGER.error("Error in handleKompletteringDone() while trying to end operativ uppgift for handlaggningId: {}",
                handlaggningId, e);

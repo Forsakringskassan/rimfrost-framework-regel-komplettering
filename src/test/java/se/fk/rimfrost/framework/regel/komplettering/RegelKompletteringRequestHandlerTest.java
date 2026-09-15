@@ -12,8 +12,6 @@ import se.fk.rimfrost.framework.handlaggning.exception.HandlaggningException;
 import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
 import se.fk.rimfrost.framework.handlaggning.model.HandlaggningUpdate;
 import se.fk.rimfrost.framework.handlaggning.model.Yrkande;
-import se.fk.rimfrost.framework.oul.exception.OulException;
-import se.fk.rimfrost.framework.oul.model.OperativUppgift;
 import se.fk.rimfrost.framework.regel.Utfall;
 import se.fk.rimfrost.framework.regel.error.RegelFelkod;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringRequestHandler;
@@ -23,6 +21,7 @@ import se.fk.rimfrost.framework.regel.komplettering.logic.exception.EndOulUppgif
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.HandlaggningReadException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.KompletteringIncompleteException;
 import se.fk.rimfrost.framework.regel.oul.logic.entity.OulUppgiftSpec;
+import se.fk.rimfrost.framework.regel.oul.logic.exception.OulServiceException;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -94,7 +93,7 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(true);
 
       var captor = ArgumentCaptor.forClass(OulUppgiftSpec.class);
-      Mockito.when(oulUppgiftService.createOulUppgift(captor.capture())).thenReturn(Mockito.mock(OperativUppgift.class));
+      Mockito.doNothing().when(oulUppgiftService).createOulUppgift(captor.capture());
 
       regelKafkaConnector.sendRegelRequest(handlaggningId.toString(), responseTopic);
 
@@ -166,7 +165,7 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
 
       Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(true);
-      Mockito.when(oulUppgiftService.createOulUppgift(Mockito.any())).thenThrow(new RuntimeException());
+      Mockito.doThrow(new RuntimeException()).when(oulUppgiftService).createOulUppgift(Mockito.any());
 
       regelKafkaConnector.sendRegelRequest(handlaggningId.toString(), responseTopic);
       var response = regelKafkaConnector.waitForRegelResponse();
@@ -249,7 +248,7 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
 
       Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(false);
-      Mockito.doThrow(new OulException(OulException.ErrorType.UNEXPECTED_ERROR, "")).when(oulUppgiftService)
+      Mockito.doThrow(new OulServiceException(OulServiceException.ErrorType.UNEXPECTED_ERROR, "")).when(oulUppgiftService)
             .endOulUppgift(eq(DEFAULT_UPPGIFT_ID), Mockito.any());
 
       assertThrows(EndOulUppgiftException.class, () -> regelKompletteringRequestHandler.handleKompletteringDone(handlaggningId));

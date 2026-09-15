@@ -37,7 +37,7 @@ underliggande ramverk upprepas inte.
 - **FRKOMP-FR-03.3** Om `isKompletteringRequired()` returnerar true ska ramverket
   initiera en kompletteringsuppgift via `OulUppgiftService.createOulUppgift()` och vänta —
   inget Kafka-svar skickas i detta steg.
-- **FRKOMP-FR-03.4** Om `OulUppgiftService.createOulUppgift()` kastar `OulException` ska ramverket skicka ett felsvar med
+- **FRKOMP-FR-03.4** Om `OulUppgiftService.createOulUppgift()` kastar `OulServiceException` ska ramverket skicka ett felsvar med
   felkod `RIMFROST_OTHER`.
 - **FRKOMP-FR-03.5** Om exception kastas vid läsning av handläggning ska ramverket skicka ett felsvar med
     relevant felkod.
