@@ -2,6 +2,16 @@
 
 Changelog of rimfrost-framework-regel-komplettering.
 
+## 0.0.2 (2026-09-15)
+
+### Bug Fixes
+
+-  Remove OUL adapter dependency ([a62f9](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/a62f9224629f06a) Lars Persson)  
+
+### Dependency updates
+
+- pin forsakringskassan/.github action to d1349e6 ([debad](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/debada603813d92) renovate[bot])  
+- add renovate.json ([61d29](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/61d29bfd22f76a7) renovate[bot])  
 ## 0.0.1 (2026-09-11)
 
 ### Features
