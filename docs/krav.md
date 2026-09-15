@@ -63,6 +63,7 @@ underliggande ramverk upprepas inte.
   svarsdata: samma datastruktur används både som returvärde för `readSvarData` (GET) och som
   request body för `registerSvar` (PATCH).
 - **FRKOMP-FR-04.7** `POST /done` ska returnera HTTP 404 om handläggning inte kan hittas.
+- **FRKOMP-FR-04.8** 404 fel vid REST-anrop för att avsluta OUL uppgift behandlas som lyckat anrop.
 
 ### FRKOMP-FR-05 — Kontroll av skyddad identitet (SID)
 
