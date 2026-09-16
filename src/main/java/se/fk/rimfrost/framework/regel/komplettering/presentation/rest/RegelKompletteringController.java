@@ -135,6 +135,14 @@ public abstract class RegelKompletteringController<T>
       }
       catch (HandlaggningException e)
       {
+         if (e.getErrorType() == HandlaggningException.ErrorType.CONFLICT)
+         {
+            LOGGER.error(
+                  "Version conflict while attempting to update handlaggning with id: {}. Programming fault in regel komplettering service?",
+                  handlaggningId, e);
+            throw new WebApplicationException(Response.Status.INTERNAL_SERVER_ERROR);
+         }
+
          LOGGER.error("Failed to update handlaggning. handlaggningId: {}", handlaggningId, e);
          throw new WebApplicationException(toHttpStatus(e));
       }
