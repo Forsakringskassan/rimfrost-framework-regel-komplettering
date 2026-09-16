@@ -7,6 +7,7 @@ import jakarta.ws.rs.Path;
 
 import java.util.List;
 import java.util.UUID;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -25,8 +26,11 @@ import se.fk.rimfrost.framework.regel.komplettering.logic.exception.Kompletterin
 import se.fk.rimfrost.framework.regel.logic.dto.ImmutableRegelDataRequest;
 import se.fk.rimfrost.framework.regel.logic.dto.RegelDataRequest;
 import se.fk.rimfrost.framework.regel.komplettering.presentation.rest.RegelKompletteringController;
+import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.model.ErrorResponse;
 import se.fk.rimfrost.framework.sid.adapter.SidAdapter;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -102,10 +106,11 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
       Mockito.doThrow(new CorrelationDataReadException("")).when(regelKompletteringDoneHandler)
             .handleKompletteringDone(handlaggningId);
 
-      RestAssured.given()
+      var response = RestAssured.given()
             .post("/api/test/" + handlaggningId + "/done")
             .then()
-            .statusCode(409);
+            .statusCode(409).extract().as(ErrorResponse.class);
+      assertEquals(409, response.getCode());
    }
 
    @Test
@@ -116,10 +121,11 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
 
       Mockito.doThrow(new KompletteringIncompleteException()).when(regelKompletteringDoneHandler)
             .handleKompletteringDone(handlaggningId);
-      RestAssured.given()
+      var response = RestAssured.given()
             .post("/api/test/" + handlaggningId + "/done")
             .then()
-            .statusCode(422);
+            .statusCode(422).extract().as(ErrorResponse.class);
+      assertEquals(422, response.getCode());
    }
 
    @Test
@@ -130,10 +136,11 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
 
       Mockito.doThrow(new HandlaggningNotFoundException("", new Throwable())).when(regelKompletteringDoneHandler)
             .handleKompletteringDone(handlaggningId);
-      RestAssured.given()
+      var response = RestAssured.given()
             .post("/api/test/" + handlaggningId + "/done")
             .then()
-            .statusCode(404);
+            .statusCode(404).extract().as(ErrorResponse.class);
+      assertEquals(404, response.getCode());
    }
 
    @Test
@@ -144,10 +151,11 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
 
       Mockito.doThrow(new HandlaggningReadException("", new Throwable())).when(regelKompletteringDoneHandler)
             .handleKompletteringDone(handlaggningId);
-      RestAssured.given()
+      var response = RestAssured.given()
             .post("/api/test/" + handlaggningId + "/done")
             .then()
-            .statusCode(500);
+            .statusCode(500).extract().as(ErrorResponse.class);
+      assertEquals(500, response.getCode());
    }
 
    @Test
@@ -158,10 +166,11 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
 
       Mockito.doThrow(new EndOulUppgiftException("", new Throwable())).when(regelKompletteringDoneHandler)
             .handleKompletteringDone(handlaggningId);
-      RestAssured.given()
+      var response = RestAssured.given()
             .post("/api/test/" + handlaggningId + "/done")
             .then()
-            .statusCode(500);
+            .statusCode(500).extract().as(ErrorResponse.class);
+      assertEquals(500, response.getCode());
    }
 
    @Test
@@ -238,10 +247,14 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
       Mockito.when(handlaggningAdapter.updateHandlaggning(Mockito.any()))
             .thenThrow(new HandlaggningException(HandlaggningException.ErrorType.CONFLICT, "Version conflict detected"));
 
-      RestAssured.given()
+      var response = RestAssured.given()
             .body(requestBody)
             .patch("/api/test/" + UUID.randomUUID())
             .then()
-            .statusCode(500);
+            .statusCode(500).extract().as(ErrorResponse.class);
+
+      assertEquals(500, response.getCode());
+      assertTrue(response.getMessage().matches("(?i).*conflict.*"));
+      assertTrue(response.getMessage().matches("(?i).*programming fault.*"));
    }
 }
