@@ -223,4 +223,25 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
             .then()
             .statusCode(204);
    }
+
+   @Test
+   @DisplayName("FRKOMP-FR-04.9: PATCH returns 500 on conflict error during handlaggning update")
+   void should_return_500_on_handlaggning_update_conflict_during_patch() throws HandlaggningException
+   {
+      var handlaggningId = UUID.randomUUID();
+      var handlaggning = createHandlaggning();
+      var requestBody = "";
+
+      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
+      Mockito.when(regelKompletteringService.registerSvar(Mockito.any(), eq(requestBody)))
+            .thenReturn(Mockito.mock(HandlaggningUpdate.class));
+      Mockito.when(handlaggningAdapter.updateHandlaggning(Mockito.any()))
+            .thenThrow(new HandlaggningException(HandlaggningException.ErrorType.CONFLICT, "Version conflict detected"));
+
+      RestAssured.given()
+            .body(requestBody)
+            .patch("/api/test/" + UUID.randomUUID())
+            .then()
+            .statusCode(500);
+   }
 }

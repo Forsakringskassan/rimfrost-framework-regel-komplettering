@@ -177,6 +177,21 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
       {
          handlaggningAdapter.updateHandlaggning(handlaggningUpdate);
       }
+      catch (HandlaggningException e)
+      {
+         if (e.getErrorType() == HandlaggningException.ErrorType.CONFLICT)
+         {
+            LOGGER.error(
+                  "Version conflict error in handleKompletteringDone() while updating handlaggning for id: {}. Programming fault? — RegelResponse already sent, ignoring failure",
+                  handlaggningId, e);
+         }
+         else
+         {
+            LOGGER.error(
+                  "Error in handleKompletteringDone() while updating handlaggning for id: {} — RegelResponse already sent, ignoring failure",
+                  handlaggningId, e);
+         }
+      }
       catch (Exception e)
       {
          LOGGER.error(

@@ -64,6 +64,8 @@ underliggande ramverk upprepas inte.
   request body för `registerSvar` (PATCH).
 - **FRKOMP-FR-04.7** `POST /done` ska returnera HTTP 404 om handläggning inte kan hittas.
 - **FRKOMP-FR-04.8** 404 fel vid REST-anrop för att avsluta OUL uppgift behandlas som lyckat anrop.
+- **FRKOMP-FR-04.9** `PATCH /{handlaggningId}` ska svara med HTTP 500 om konflikt fel uppstår 
+  vid uppdatering av handläggning.
 
 ### FRKOMP-FR-05 — Kontroll av skyddad identitet (SID)
 
