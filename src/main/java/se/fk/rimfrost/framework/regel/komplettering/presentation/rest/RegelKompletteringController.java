@@ -19,8 +19,11 @@ import se.fk.rimfrost.framework.handlaggning.adapter.HandlaggningAdapter;
 import se.fk.rimfrost.framework.handlaggning.exception.HandlaggningException;
 import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
 import se.fk.rimfrost.framework.handlaggning.model.HandlaggningUpdate;
+import se.fk.rimfrost.framework.regel.integration.config.RegelConfigProvider;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringDoneHandler;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringService;
+import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.RegelOulControllerApi;
+import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.model.GetUtokadUppgiftsbeskrivningResponse;
 import se.fk.rimfrost.framework.regel.oul.logic.OulUppgiftService;
 import se.fk.rimfrost.framework.sid.adapter.SidAdapter;
 import se.fk.rimfrost.framework.sid.exception.SidException;
@@ -38,7 +41,7 @@ import se.fk.rimfrost.framework.sid.model.Idtyp;
  *
  * @param <T> shared data type for the GET response and PATCH request body (FRALL-FR-07.7)
  */
-public abstract class RegelKompletteringController<T>
+public abstract class RegelKompletteringController<T> implements RegelOulControllerApi
 {
    private static final Logger LOGGER = LoggerFactory.getLogger(RegelKompletteringController.class);
 
@@ -53,8 +56,12 @@ public abstract class RegelKompletteringController<T>
 
    @Inject
    RegelKompletteringDoneHandler regelKompletteringDoneHandler;
+
    @Inject
    OulUppgiftService oulUppgiftService;
+
+   @Inject
+   RegelConfigProvider regelConfigProvider;
 
    /**
     * Returns the data the handläggare needs to register the sökande's svar.
@@ -105,14 +112,12 @@ public abstract class RegelKompletteringController<T>
     * </ul>
     *
     * @param handlaggningId the handlaggning whose komplettering is done
-    * @return 204 on success
     */
    @POST
    @Path("/{handlaggningId}/done")
-   public Response kompletteringDone(@PathParam("handlaggningId") UUID handlaggningId)
+   public void markDone(@PathParam("handlaggningId") UUID handlaggningId)
    {
       regelKompletteringDoneHandler.handleKompletteringDone(handlaggningId);
-      return Response.noContent().build();
    }
 
    private Handlaggning fetchHandlaggning(UUID handlaggningId)
@@ -123,7 +128,7 @@ public abstract class RegelKompletteringController<T>
       }
       catch (HandlaggningException e)
       {
-         throw new WebApplicationException(toHttpStatus(e));
+         throw new WebApplicationException(buildErrorResponse(toHttpStatus(e).getStatusCode(), e.getMessage()));
       }
    }
 
@@ -140,12 +145,32 @@ public abstract class RegelKompletteringController<T>
             LOGGER.error(
                   "Version conflict while attempting to update handlaggning with id: {}. Programming fault in regel komplettering service?",
                   handlaggningId, e);
-            throw new WebApplicationException(Response.Status.INTERNAL_SERVER_ERROR);
+            throw new WebApplicationException(buildErrorResponse(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                  "Version conflict while attempting to update handlaggning with id: " + handlaggningId
+                        + ". Programming fault in regel komplettering service?"));
          }
 
          LOGGER.error("Failed to update handlaggning. handlaggningId: {}", handlaggningId, e);
-         throw new WebApplicationException(toHttpStatus(e));
+         throw new WebApplicationException(buildErrorResponse(toHttpStatus(e).getStatusCode(), e.getMessage()));
       }
+   }
+
+   /**
+    * Returns the extended description of the task the handläggare should perform
+    *
+    * @return 200 with the extended description
+    */
+   @GET
+   @Path("/utokadUppgiftsbeskrivning")
+   @Override
+   public GetUtokadUppgiftsbeskrivningResponse getUtokadUppgiftsbeskrivning()
+   {
+      var regelConfig = regelConfigProvider.getConfig();
+
+      GetUtokadUppgiftsbeskrivningResponse response = new GetUtokadUppgiftsbeskrivningResponse();
+      response.setBeskrivning(regelConfig.getUtokadUppgiftsbeskrivning().getBeskrivning());
+
+      return response;
    }
 
    /**
@@ -162,7 +187,7 @@ public abstract class RegelKompletteringController<T>
       catch (SidException e)
       {
          LOGGER.error("Error checking SID for handlaggningsId: {}", handlaggning.id(), e);
-         throw new WebApplicationException(toHttpStatus(e));
+         throw new WebApplicationException(buildErrorResponse(toHttpStatus(e).getStatusCode(), e.getMessage()));
       }
    }
 
@@ -221,5 +246,10 @@ public abstract class RegelKompletteringController<T>
          case SERVICE_UNAVAILABLE -> Response.Status.SERVICE_UNAVAILABLE;
          default -> Response.Status.INTERNAL_SERVER_ERROR;
       };
+   }
+
+   private static Response buildErrorResponse(int statusCode, String message)
+   {
+      return Response.status(statusCode, message).build();
    }
 }

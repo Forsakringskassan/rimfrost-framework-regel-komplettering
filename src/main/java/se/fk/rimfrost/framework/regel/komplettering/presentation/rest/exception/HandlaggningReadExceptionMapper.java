@@ -4,6 +4,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.HandlaggningReadException;
+import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.model.ErrorResponse;
 
 /**
  * Maps {@link HandlaggningReadException} to HTTP 500 Internal Server Error.
@@ -15,6 +16,10 @@ public class HandlaggningReadExceptionMapper implements ExceptionMapper<Handlagg
    @Override
    public Response toResponse(HandlaggningReadException exception)
    {
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+      ErrorResponse errorResponse = new ErrorResponse();
+      errorResponse.setCode(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+      errorResponse.setMessage(exception.getMessage());
+
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(errorResponse).build();
    }
 }

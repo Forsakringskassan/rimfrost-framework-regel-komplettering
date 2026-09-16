@@ -4,6 +4,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.CorrelationDataReadException;
+import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.model.ErrorResponse;
 
 /**
  * Maps {@link CorrelationDataReadException} to HTTP 409 Conflict.
@@ -15,6 +16,10 @@ public class CorrelationDataReadExceptionMapper implements ExceptionMapper<Corre
    @Override
    public Response toResponse(CorrelationDataReadException exception)
    {
-      return Response.status(Response.Status.CONFLICT).build();
+      ErrorResponse errorResponse = new ErrorResponse();
+      errorResponse.setCode(Response.Status.CONFLICT.getStatusCode());
+      errorResponse.setMessage("Failed to read correlation data");
+
+      return Response.status(Response.Status.CONFLICT).entity(errorResponse).build();
    }
 }
