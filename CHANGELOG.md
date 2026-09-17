@@ -2,6 +2,12 @@
 
 Changelog of rimfrost-framework-regel-komplettering.
 
+## 0.1.0 (2026-09-17)
+
+### Features
+
+-  Add maven-jar-plugin to publish test-jar with abstract and test classes ([88078](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/880787984c7175e) Ulf Slunga)  
+
 ## 0.0.3 (2026-09-16)
 
 ### Bug Fixes
