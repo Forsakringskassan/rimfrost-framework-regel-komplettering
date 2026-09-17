@@ -2,6 +2,14 @@
 
 Changelog of rimfrost-framework-regel-komplettering.
 
+## 0.0.3 (2026-09-16)
+
+### Bug Fixes
+
+-  Implement OUL openapi interface ([95a9c](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/95a9ca74cebc779) Lars Persson)  
+-  Use dedicated conflict faults ([cb2c4](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/cb2c4b6faa1c91d) Lars Persson)  
+-  Treat 404 as 200 during OUL end REST operation ([52a4b](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/52a4b9b4b08f3b5) Lars Persson)  
+
 ## 0.0.2 (2026-09-15)
 
 ### Bug Fixes
