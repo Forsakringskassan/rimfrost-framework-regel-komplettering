@@ -2,6 +2,12 @@
 
 Changelog of rimfrost-framework-regel-komplettering.
 
+## 0.1.1 (2026-09-18)
+
+### Bug Fixes
+
+-  Bump rimfrost-framework-regel-oul version ([53313](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/5331377e20998d8) Lars Persson)  
+
 ## 0.1.0 (2026-09-17)
 
 ### Features
