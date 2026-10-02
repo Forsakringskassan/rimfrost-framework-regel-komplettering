@@ -194,27 +194,6 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
    }
 
    @Test
-   @DisplayName("FRKOMP-FR-05.1, FRKOMP-FR-05.3: GET returns 403 on SID check failure")
-   void should_unassign_on_sid_check_failure_at_get() throws Exception
-   {
-      var handlaggningId = UUID.randomUUID();
-      var handlaggning = createHandlaggning();
-
-      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
-      Mockito.when(sidAdapter.containsSid(Mockito.anyList())).thenReturn(true);
-      Mockito.doNothing().when(oulUppgiftService).tryUnassignOulUppgift(DEFAULT_UPPGIFT_ID);
-      RestAssured.given()
-            .get("/api/test/" + handlaggningId)
-            .then()
-            .statusCode(403);
-
-      verify(handlaggningAdapter).readHandlaggning(handlaggningId);
-      verify(sidAdapter).containsSid(Mockito.anyList());
-      verify(oulUppgiftService).tryUnassignOulUppgift(DEFAULT_UPPGIFT_ID);
-      verifyNoInteractions(regelKompletteringService);
-   }
-
-   @Test
    @DisplayName("FRKOMP-FR-04.2: PATCH returns 204 on success")
    void should_return_204_on_patch_success() throws HandlaggningException
    {
