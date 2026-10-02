@@ -11,6 +11,8 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.ext.web.RoutingContext;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -25,6 +27,10 @@ import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringServ
 import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.RegelOulControllerApi;
 import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.model.GetUtokadUppgiftsbeskrivningResponse;
 import se.fk.rimfrost.framework.regel.oul.logic.OulUppgiftService;
+import se.fk.rimfrost.adapter.permissions.adapter.PermissionsAdapter;
+import se.fk.rimfrost.adapter.permissions.adapter.PermissionsException;
+import se.fk.rimfrost.adapter.identity.adapter.IdentityAdapter;
+import se.fk.rimfrost.adapter.identity.exception.IdentityException;
 import se.fk.rimfrost.framework.sid.adapter.SidAdapter;
 import se.fk.rimfrost.framework.sid.exception.SidException;
 import se.fk.rimfrost.framework.sid.model.Idtyp;
@@ -52,6 +58,15 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
    SidAdapter sidAdapter;
 
    @Inject
+   PermissionsAdapter permissionsAdapter;
+
+   @Inject
+   IdentityAdapter identityAdapter;
+
+   @Inject
+   RoutingContext routingContext;
+
+   @Inject
    RegelKompletteringService<T> kompletteringService;
 
    @Inject
@@ -74,7 +89,7 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
    public Response getKomplettering(@PathParam("handlaggningId") UUID handlaggningId)
    {
       var handlaggning = fetchHandlaggning(handlaggningId);
-      if (checkSid(handlaggning))
+      if (checkSid(handlaggning) && !checkHandlaggareHasSidPermission())
       {
          unassignUppgift(handlaggningId);
          return Response.status(Response.Status.FORBIDDEN.getStatusCode(), "Skyddad identitet").build();
@@ -192,9 +207,59 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
    }
 
    /**
+    * Checks whether the inloggad handläggare has SID-behörighet (FRKOMP-FR-05.9).
+    * Identity is resolved via {@link IdentityAdapter#getIdentity(String)}.
+    * Returns {@code true} if the handläggare has permission, {@code false} otherwise.
+    * Maps {@link PermissionsException} to an appropriate HTTP status on service errors.
+    */
+   private boolean checkHandlaggareHasSidPermission()
+   {
+      var identity = resolveHandlaggareIdentity();
+      if (identity == null)
+      {
+         LOGGER.warn("Handläggare identity could not be resolved, denying SID permission");
+         return false;
+      }
+      try
+      {
+         return permissionsAdapter.hasSidPermission(identity.typId(), identity.varde());
+      }
+      catch (PermissionsException e)
+      {
+         LOGGER.error("Error checking SID permission for idTyp: {}", identity.typId(), e);
+         throw new WebApplicationException(buildErrorResponse(toHttpStatus(e).getStatusCode(), e.getMessage()));
+      }
+   }
+
+   /**
+    * Resolves the inloggad handläggare's identity via {@link IdentityAdapter}.
+    * Returns {@code null} and logs a warning if the identity cannot be resolved due to an
+    * {@link IdentityException.ErrorType#UNAUTHORIZED} error; throws {@link WebApplicationException}
+    * for other identity service errors.
+    */
+   private se.fk.rimfrost.adapter.identity.model.Idtyp resolveHandlaggareIdentity()
+   {
+      var authHeader = routingContext.request().headers().get(HttpHeaders.AUTHORIZATION);
+      try
+      {
+         return identityAdapter.getIdentity(authHeader);
+      }
+      catch (IdentityException e)
+      {
+         if (e.getErrorType() == IdentityException.ErrorType.UNAUTHORIZED)
+         {
+            LOGGER.warn("Could not resolve handläggare identity from request, treating as no SID permission");
+            return null;
+         }
+         LOGGER.error("Error fetching handläggare identity from request", e);
+         throw new WebApplicationException(buildErrorResponse(toHttpStatus(e).getStatusCode(), e.getMessage()));
+      }
+   }
+
+   /**
     * Unassigns the OUL uppgift for the given handläggning so it returns to an unassigned state.
     * Delegates to {@link OulUppgiftService#tryUnassignOulUppgift}, which logs and swallows any
-    * failure so it never affects the HTTP response (FRMM-FR-08.8).
+    * failure so it never affects the HTTP response (FRKOMP-FR-05.8).
     */
    private void unassignUppgift(UUID handlaggningId)
    {
@@ -239,13 +304,24 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
       };
    }
 
-   private static Response.Status toHttpStatus(SidException e) {
-      return switch (e.getErrorType()) {
-         case NOT_FOUND -> Response.Status.NOT_FOUND;
-         case BAD_REQUEST -> Response.Status.BAD_REQUEST;
-         case SERVICE_UNAVAILABLE -> Response.Status.SERVICE_UNAVAILABLE;
-         default -> Response.Status.INTERNAL_SERVER_ERROR;
-      };
+   private static Response.Status toHttpStatus(SidException e)
+   {
+      return externalServiceErrorToHttpStatus(e.getErrorType().name());
+   }
+
+   private static Response.Status toHttpStatus(PermissionsException e)
+   {
+      return externalServiceErrorToHttpStatus(e.getErrorType().name());
+   }
+
+   private static Response.Status toHttpStatus(IdentityException e)
+   {
+      return externalServiceErrorToHttpStatus(e.getErrorType().name());
+   }
+
+   private static Response.Status externalServiceErrorToHttpStatus(String errorType)
+   {
+      return switch(errorType){case"NOT_FOUND"->Response.Status.NOT_FOUND;case"BAD_REQUEST"->Response.Status.BAD_REQUEST;case"SERVICE_UNAVAILABLE"->Response.Status.SERVICE_UNAVAILABLE;default->Response.Status.INTERNAL_SERVER_ERROR;};
    }
 
    private static Response buildErrorResponse(int statusCode, String message)
