@@ -226,7 +226,7 @@ class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletterin
    private Handlaggning createHandlaggning()
    {
       var yrkande = Mockito.mock(Yrkande.class);
-      Mockito.when(yrkande.individYrkandeRoller()).thenReturn(List.of());
+      Mockito.when(yrkande.rollerIYrkande()).thenReturn(List.of());
       var handlaggning = Mockito.mock(Handlaggning.class);
       Mockito.when(handlaggning.yrkande()).thenReturn(yrkande);
       return handlaggning;

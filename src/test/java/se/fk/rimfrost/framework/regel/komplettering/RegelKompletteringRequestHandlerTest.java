@@ -51,11 +51,12 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
       var yrkande = Mockito.mock(Yrkande.class);
       var handlaggning = Mockito.mock(Handlaggning.class);
 
-      Mockito.when(yrkande.erbjudandeId()).thenReturn("b1cb6133-11af-4a30-9180-5ea8104a74c7");
+      Mockito.when(yrkande.ingangtypId()).thenReturn("b1cb6133-11af-4a30-9180-5ea8104a74c7");
       Mockito.when(handlaggning.yrkande()).thenReturn(yrkande);
       Mockito.when(handlaggning.id()).thenReturn(UUID.randomUUID());
+      Mockito.when(handlaggning.handlaggningIdTyp()).thenReturn(UUID.randomUUID().toString());
+      Mockito.when(handlaggning.handlaggningIdVarde()).thenReturn(UUID.randomUUID().toString());
       Mockito.when(handlaggning.version()).thenReturn(1);
-      Mockito.when(handlaggning.processInstansId()).thenReturn(UUID.randomUUID());
       Mockito.when(handlaggning.skapadTS()).thenReturn(OffsetDateTime.now());
       Mockito.when(handlaggning.avslutadTS()).thenReturn(OffsetDateTime.now());
       Mockito.when(handlaggning.handlaggningspecifikationId()).thenReturn(UUID.randomUUID());
@@ -193,6 +194,34 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
       var response = regelKafkaConnector.waitForRegelResponse();
 
       assertEquals(Utfall.JA, response.getData().getUtfall());
+      verify(handlaggningAdapter).readHandlaggning(handlaggningId);
+      verify(regelKompletteringService).isKompletteringRequired(Mockito.any());
+      verify(oulUppgiftService).endOulUppgift(eq(DEFAULT_UPPGIFT_ID), Mockito.any());
+      verify(oulUppgiftService).cleanupCorrelation(handlaggningId);
+      verify(handlaggningAdapter).updateHandlaggning(Mockito.any());
+   }
+
+   @Test
+   @DisplayName("Uppgift with RegelUtfall=JA is sent on successful komplettering")
+   void should_send_uppgift_regelutfall_on_successful_done_handling() throws Exception
+   {
+      var handlaggningId = UUID.randomUUID();
+      var handlaggning = createHandlaggning();
+
+      var captor = ArgumentCaptor.forClass(HandlaggningUpdate.class);
+
+      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
+      Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(false);
+      Mockito.doNothing().when(oulUppgiftService).endOulUppgift(eq(DEFAULT_UPPGIFT_ID), Mockito.any());
+      Mockito.doNothing().when(oulUppgiftService).cleanupCorrelation(handlaggningId);
+      Mockito.when(handlaggningAdapter.updateHandlaggning(captor.capture())).thenReturn(Mockito.mock(HandlaggningUpdate.class));
+
+      regelKompletteringRequestHandler.handleKompletteringDone(handlaggningId);
+
+      var handlaggningUpdate = captor.getValue();
+      assertNotNull(handlaggningUpdate.uppgift().regelutfall());
+      assertEquals(Utfall.JA.getValue(), handlaggningUpdate.uppgift().regelutfall().varde());
+
       verify(handlaggningAdapter).readHandlaggning(handlaggningId);
       verify(regelKompletteringService).isKompletteringRequired(Mockito.any());
       verify(oulUppgiftService).endOulUppgift(eq(DEFAULT_UPPGIFT_ID), Mockito.any());
