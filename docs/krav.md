@@ -66,6 +66,13 @@ underliggande ramverk upprepas inte.
 - **FRKOMP-FR-04.8** 404 fel vid REST-anrop för att avsluta OUL uppgift behandlas som lyckat anrop.
 - **FRKOMP-FR-04.9** `PATCH /{handlaggningId}` ska svara med HTTP 500 om konflikt fel uppstår 
   vid uppdatering av handläggning.
+- **FRKOMP-FR-04.10** REST-anrop mot externa tjänster (SID-tjänsten och behörighetstjänsten) ska
+  returnera HTTP 404 om tjänsten svarar med `NOT_FOUND`.
+- **FRKOMP-FR-04.11** REST-anrop mot externa tjänster ska returnera HTTP 400 om tjänsten svarar
+  med `BAD_REQUEST`.
+- **FRKOMP-FR-04.12** REST-anrop mot externa tjänster ska returnera HTTP 503 om tjänsten svarar
+  med `SERVICE_UNAVAILABLE`.
+- **FRKOMP-FR-04.13** REST-anrop mot externa tjänster ska returnera HTTP 500 vid övriga fel.
 
 ### FRKOMP-FR-05 — Kontroll av skyddad identitet (SID)
 
@@ -73,14 +80,12 @@ underliggande ramverk upprepas inte.
   om någon av handläggningsärendets individer har skyddad identitet via SID-tjänsten.
 - **FRKOMP-FR-05.2** Individerna hämtas från `handlaggning.yrkande().individYrkandeRoller()` och
   skickas i en `POST /sid/status`-förfrågan till SID-tjänsten.
-- **FRKOMP-FR-05.3** Om en eller flera individer har skyddad identitet ska ramverket returnera
-  HTTP 403 och `readSvarData()` ska inte anropas.
-- **FRKOMP-FR-05.4** Fel från SID-tjänsten ska resultera i väldefinierade HTTP-statuskoder på samma
-  sätt som fel mot handläggningstjänsten: 404, 400, 503 respektive 500.
+- **FRKOMP-FR-05.3** Om en eller flera individer har skyddad identitet och handläggaren saknar
+  SID-rättigheter ska ramverket returnera HTTP 403 och `readSvarData()` ska inte anropas.
 - **FRKOMP-FR-05.5** SID-kontrollen ska ingå i ramverket och gälla automatiskt för alla
-  regelimplementationer utan kodändringar. Varje regelimplementation måste konfigurera `sid.api.base-url`
-  med adressen till SID-tjänsten.
-- **FRKOMP-FR-05.6** Om en eller flera individer har skyddad identitet ska ramverket ta bort tilldelningen av OUL-uppgiften
+  regelimplementationer utan kodändringar.
+- **FRKOMP-FR-05.6** Om en eller flera individer har skyddad identitet och handläggaren saknar
+  SID-rättigheter ska ramverket ta bort tilldelningen av OUL-uppgiften
   innan HTTP 403 returneras, via `tryUnassignOulUppgift` som tillhandahålls av
   `rimfrost-framework-regel-oul`, så att uppgiften återgår till otilldelat läge och kan tilldelas
   handläggare med SID-rättigheter.
@@ -90,6 +95,17 @@ underliggande ramverk upprepas inte.
   hoppas över utan fel — HTTP 403 ska ändå returneras.
 - **FRKOMP-FR-05.8** Fel vid unassign av OUL-uppgiften ska loggas men ska inte påverka det
   returnerade HTTP 403-svaret. `tryUnassignOulUppgift` hanterar loggning och sväljer felet internt.
+- **FRKOMP-FR-05.9** Om SID detekteras ska ramverket kontrollera om den inloggade handläggaren har
+  SID-rättigheter via `PermissionsAdapter.hasSidPermission()`. Handläggarens identitet (`idTyp`
+  och `idVarde`) ska hämtas via `IdentityAdapter.getIdentity()`.
+- **FRKOMP-FR-05.14** Om handläggarens identitet inte kan lösas (saknat eller felaktigt
+  `Authorization`-huvud) ska handläggaren behandlas som om de saknar SID-rättigheter — ramverket
+  returnerar HTTP 403 och loggar en varning.
+- **FRKOMP-FR-05.10** Om handläggaren har SID-rättigheter ska `readSvarData()` anropas normalt och
+  ärendet hanteras utan begränsning.
+- **FRKOMP-FR-05.11** *(ej testbar — konfigurationskrav)* Ramverket ska läsa adressen till SID-tjänsten från property `sid.api.base-url`.
+- **FRKOMP-FR-05.12** *(ej testbar — konfigurationskrav)* Ramverket ska läsa adressen till behörighetstjänsten från property `permissions.api.base-url`.
+- **FRKOMP-FR-05.13** *(ej testbar — konfigurationskrav)* Ramverket ska läsa adressen till identity-tjänsten från property `quarkus.rest-client.identity-api.url`.
 
 ---
 
