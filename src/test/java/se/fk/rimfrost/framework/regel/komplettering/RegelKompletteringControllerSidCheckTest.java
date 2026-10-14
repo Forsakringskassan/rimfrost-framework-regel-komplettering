@@ -217,10 +217,10 @@ class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletterin
 
    private void givenStoredOulUppgiftId(UUID oulUppgiftId)
    {
-      var utforarId = se.fk.rimfrost.framework.handlaggning.model.ImmutableIdtyp.builder().typId(ID_TYP).varde(ID_VARDE)
+      var utforare = se.fk.rimfrost.framework.handlaggning.model.ImmutableIdtyp.builder().typId(ID_TYP).varde(ID_VARDE)
             .build();
       var uppgift = Mockito.mock(Uppgift.class);
-      Mockito.when(uppgift.utforarId()).thenReturn(utforarId);
+      Mockito.when(uppgift.utforare()).thenReturn(utforare);
       var correlationData = Mockito.mock(OulCorrelationData.class);
       Mockito.when(correlationData.oulUppgiftId()).thenReturn(oulUppgiftId);
       Mockito.when(correlationData.uppgift()).thenReturn(uppgift);
@@ -230,7 +230,7 @@ class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletterin
    private Handlaggning createHandlaggning()
    {
       var yrkande = Mockito.mock(Yrkande.class);
-      Mockito.when(yrkande.individYrkandeRoller()).thenReturn(List.of());
+      Mockito.when(yrkande.rollerIYrkande()).thenReturn(List.of());
       var handlaggning = Mockito.mock(Handlaggning.class);
       Mockito.when(handlaggning.yrkande()).thenReturn(yrkande);
       return handlaggning;

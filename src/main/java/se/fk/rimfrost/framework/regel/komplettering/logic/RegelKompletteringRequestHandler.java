@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import se.fk.rimfrost.framework.handlaggning.exception.HandlaggningException;
 import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableHandlaggningUpdate;
+import se.fk.rimfrost.framework.handlaggning.model.ImmutableRegelutfall;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableUppgift;
 import se.fk.rimfrost.framework.referensdata.ErbjudandeReferensdataInterface;
 import se.fk.rimfrost.framework.regel.RegelErrorInformation;
@@ -58,7 +59,7 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
       {
          cloudEvent = createCloudEvent(request);
          var handlaggning = getHandlaggning(request.handlaggningId(), cloudEvent);
-         var erbjudandeNamn = erbjudandeReferensdata.getErbjudandeNamn(handlaggning.yrkande().erbjudandeId());
+         var erbjudandeNamn = erbjudandeReferensdata.getErbjudandeNamn(handlaggning.yrkande().ingangtypId());
 
          if (!regelKompletteringService.isKompletteringRequired(handlaggning))
          {
@@ -80,10 +81,11 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
                .verksamhetslogik(regelConfig.getSpecifikation().getVerksamhetslogik())
                .roll(regelConfig.getSpecifikation().getRoll())
                .url(regelConfig.getUppgift().getPath())
-               .erbjudande(buildErbjudande(handlaggning.yrkande().erbjudandeId(), erbjudandeNamn))
+               .erbjudande(buildErbjudande(handlaggning.yrkande().ingangtypId(), erbjudandeNamn))
                .aktivitetId(request.aktivitetId())
                .uppgiftSpecifikationId(regelConfig.getSpecifikation().getId())
                .uppgiftSpecifikationVersion(regelConfig.getSpecifikation().getVersion())
+               .assignable(false)
                .build();
 
          oulUppgiftService.createOulUppgift(spec);
@@ -131,7 +133,9 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
          }
       }
 
-      sendRegelSuccessResponse(handlaggning.id(), correlation.cloudEventData(), Utfall.JA, correlation.replyTopic());
+      var utfall = Utfall.JA;
+
+      sendRegelSuccessResponse(handlaggning.id(), correlation.cloudEventData(), utfall, correlation.replyTopic());
 
       oulUppgiftService.cleanupCorrelation(handlaggning.id());
 
@@ -140,16 +144,11 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
             .from(uppgift)
             .version(uppgift.version() + 1)
             .uppgiftStatus(AVSLUTAD)
-            .utfordTs(OffsetDateTime.now())
+            .utfordTS(OffsetDateTime.now())
+            .regelutfall(ImmutableRegelutfall.builder().varde(utfall.getValue()).build())
             .build();
       var handlaggningUpdate = ImmutableHandlaggningUpdate.builder()
-            .id(handlaggning.id())
-            .version(handlaggning.version())
-            .yrkande(handlaggning.yrkande())
-            .processInstansId(handlaggning.processInstansId())
-            .skapadTS(handlaggning.skapadTS())
-            .avslutadTS(handlaggning.avslutadTS())
-            .handlaggningspecifikationId(handlaggning.handlaggningspecifikationId())
+            .handlaggning(handlaggning)
             .uppgift(updatedUppgift)
             .build();
       try
