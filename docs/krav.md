@@ -48,7 +48,8 @@ underliggande ramverk upprepas inte.
 
 - **FRKOMP-FR-04.1** Ramverket ska exponera `GET /{handlaggningId}` som returnerar
   den information handläggaren behöver för att registrera kompletterande uppgifter. Informationen
-  hämtas via regelns implementation av `RegelKompletteringService`.
+  hämtas via regelns implementation av `RegelKompletteringService` och returneras inpackad
+  enligt FRKOMP-FR-06.
 - **FRKOMP-FR-04.2** Ramverket ska exponera `PATCH /{handlaggningId}` för
   registrering av kompletterande uppgifter via regelns implementation av
   `RegelKompletteringService`.
@@ -90,6 +91,26 @@ underliggande ramverk upprepas inte.
   hoppas över utan fel — HTTP 403 ska ändå returneras.
 - **FRKOMP-FR-05.8** Fel vid unassign av OUL-uppgiften ska loggas men ska inte påverka det
   returnerade HTTP 403-svaret. `tryUnassignOulUppgift` hanterar loggning och sväljer felet internt.
+
+### FRKOMP-FR-06 — Informationsaccessdata i GET-svaret
+
+En BFF som visar regelns data ska kunna publicera ett informationsaccess-event enligt
+`rimfrost-service-informationsaccess-asyncapi`. FK har angett att eventet ska ange
+handläggare, processinstans, uppgiftsinstans, uppgiftsspecifikation, tidpunkt och den data
+som visas i GUI:t. Individerna listas inte separat, eftersom personuppgifterna finns i den
+data som visas. Svaret bär därför den data som BFF:en inte själv har (FKPOC-1103).
+
+- **FRKOMP-FR-06.1** `GET /{handlaggningId}` ska returnera regelns svar inpackat i ett kuvert,
+  med regelns eget svar oförändrat i fältet `data` och informationsaccessdata i fältet
+  `informationsaccess`. Fältet `data` är det som BFF:en lägger i eventets
+  `visadInformation`.
+- **FRKOMP-FR-06.2** `informationsaccess.uppgiftId` ska vara OUL-uppgiftens id från lagrad
+  korrelationsdata. Det anger uppgiftsinstansen. Om korrelationsdata saknas ska fältet vara
+  `null`.
+- **FRKOMP-FR-06.3** `informationsaccess.regelId` och `informationsaccess.regelVersion` ska hämtas
+  från regelns `config.yaml`. De anger uppgiftsspecifikationen, alltså vilken regel som
+  utförs.
+- **FRKOMP-FR-06.4** Kuvertet ska bara returneras när SID-kontrollen har passerat.
 
 ---
 
