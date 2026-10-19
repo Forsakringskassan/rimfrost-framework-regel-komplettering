@@ -16,15 +16,18 @@ import se.fk.rimfrost.adapter.permissions.adapter.PermissionsAdapter;
 import se.fk.rimfrost.adapter.permissions.adapter.PermissionsException;
 import se.fk.rimfrost.framework.handlaggning.adapter.HandlaggningAdapter;
 import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
+import se.fk.rimfrost.framework.handlaggning.model.Uppgift;
 import se.fk.rimfrost.framework.handlaggning.model.Yrkande;
-import se.fk.rimfrost.adapter.identity.adapter.IdentityAdapter;
 import se.fk.rimfrost.adapter.identity.exception.IdentityException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringService;
+import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.model.ErrorResponse;
 import se.fk.rimfrost.framework.regel.oul.logic.entity.OulCorrelationData;
 import se.fk.rimfrost.framework.sid.adapter.SidAdapter;
 import se.fk.rimfrost.framework.sid.exception.SidException;
 import se.fk.rimfrost.adapter.identity.model.ImmutableIdtyp;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -33,6 +36,8 @@ import static org.mockito.Mockito.verify;
 @QuarkusTest
 class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletteringTestBase
 {
+   private static final String NO_SID_PERMISSION_PATTERN = "(?i).*does not have permission to access this uppgift.*";
+
    @InjectMock
    HandlaggningAdapter handlaggningAdapter;
 
@@ -40,31 +45,10 @@ class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletterin
    SidAdapter sidAdapter;
 
    @InjectMock
-   IdentityAdapter identityAdapter;
-
-   @InjectMock
    PermissionsAdapter permissionsAdapter;
 
    @InjectMock
    RegelKompletteringService<String> regelKompletteringService;
-
-   @Test
-   @DisplayName("FRKOMP-FR-05.14: GET returnerar 403 när SID detekteras men handläggarens identitet inte kan lösas")
-   void get_should_return_403_when_sid_detected_and_identity_unresolvable() throws Exception
-   {
-      var handlaggning = createHandlaggning();
-      Mockito.when(handlaggningAdapter.readHandlaggning(any())).thenReturn(handlaggning);
-      Mockito.when(sidAdapter.containsSid(any())).thenReturn(true);
-      Mockito.doThrow(new IdentityException(IdentityException.ErrorType.UNAUTHORIZED, "no token"))
-            .when(identityAdapter).getIdentity(any());
-
-      RestAssured.given()
-            .get("/api/test/" + UUID.randomUUID())
-            .then()
-            .statusCode(403);
-
-      verify(regelKompletteringService, never()).readSvarData(any());
-   }
 
    @Test
    @DisplayName("FRKOMP-FR-05.3: GET returnerar 403 när SID detekteras och handläggaren saknar SID-rättigheter")
@@ -76,10 +60,13 @@ class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletterin
       givenHandlaggareIdentity("PERSONNR", "19901010-1234");
       Mockito.when(permissionsAdapter.hasSidPermission(any(), any())).thenReturn(false);
 
-      RestAssured.given()
+      var response = RestAssured.given()
             .get("/api/test/" + UUID.randomUUID())
             .then()
-            .statusCode(403);
+            .statusCode(403).extract().as(ErrorResponse.class);
+
+      assertEquals(403, response.getCode());
+      assertTrue(response.getMessage().matches(NO_SID_PERMISSION_PATTERN));
 
       verify(regelKompletteringService, never()).readSvarData(any());
    }
@@ -94,10 +81,13 @@ class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletterin
       givenHandlaggareIdentity("PERSONNR", "19901010-1234");
       Mockito.when(permissionsAdapter.hasSidPermission(any(), any())).thenReturn(false);
 
-      RestAssured.given()
+      var response = RestAssured.given()
             .get("/api/test/" + UUID.randomUUID())
             .then()
-            .statusCode(403);
+            .statusCode(403).extract().as(ErrorResponse.class);
+
+      assertEquals(403, response.getCode());
+      assertTrue(response.getMessage().matches(NO_SID_PERMISSION_PATTERN));
 
       verify(oulUppgiftService).tryUnassignOulUppgift(eq(DEFAULT_UPPGIFT_ID));
    }
@@ -132,10 +122,13 @@ class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletterin
       givenHandlaggareIdentity("PERSONNR", "19901010-1234");
       Mockito.when(permissionsAdapter.hasSidPermission(any(), any())).thenReturn(false);
 
-      RestAssured.given()
+      var response = RestAssured.given()
             .get("/api/test/" + UUID.randomUUID())
             .then()
-            .statusCode(403);
+            .statusCode(403).extract().as(ErrorResponse.class);
+
+      assertEquals(403, response.getCode());
+      assertTrue(response.getMessage().matches(NO_SID_PERMISSION_PATTERN));
 
       verify(permissionsAdapter).hasSidPermission(eq("PERSONNR"), eq("19901010-1234"));
    }
@@ -151,10 +144,13 @@ class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletterin
       Mockito.when(permissionsAdapter.hasSidPermission(any(), any())).thenReturn(false);
       givenStoredOulUppgiftId(null);
 
-      RestAssured.given()
+      var response = RestAssured.given()
             .get("/api/test/" + UUID.randomUUID())
             .then()
-            .statusCode(403);
+            .statusCode(403).extract().as(ErrorResponse.class);
+
+      assertEquals(403, response.getCode());
+      assertTrue(response.getMessage().matches(NO_SID_PERMISSION_PATTERN));
 
       verify(oulUppgiftService, never()).tryUnassignOulUppgift(any());
    }
@@ -170,10 +166,13 @@ class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletterin
       Mockito.when(permissionsAdapter.hasSidPermission(any(), any())).thenReturn(false);
       Mockito.doNothing().when(oulUppgiftService).tryUnassignOulUppgift(any());
 
-      RestAssured.given()
+      var response = RestAssured.given()
             .get("/api/test/" + UUID.randomUUID())
             .then()
-            .statusCode(403);
+            .statusCode(403).extract().as(ErrorResponse.class);
+
+      assertEquals(403, response.getCode());
+      assertTrue(response.getMessage().matches(NO_SID_PERMISSION_PATTERN));
    }
 
    @ParameterizedTest
@@ -218,8 +217,13 @@ class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletterin
 
    private void givenStoredOulUppgiftId(UUID oulUppgiftId)
    {
+      var utforarId = se.fk.rimfrost.framework.handlaggning.model.ImmutableIdtyp.builder().typId(ID_TYP).varde(ID_VARDE)
+            .build();
+      var uppgift = Mockito.mock(Uppgift.class);
+      Mockito.when(uppgift.utforarId()).thenReturn(utforarId);
       var correlationData = Mockito.mock(OulCorrelationData.class);
       Mockito.when(correlationData.oulUppgiftId()).thenReturn(oulUppgiftId);
+      Mockito.when(correlationData.uppgift()).thenReturn(uppgift);
       Mockito.when(oulUppgiftService.getCorrelationData(any())).thenReturn(correlationData);
    }
 

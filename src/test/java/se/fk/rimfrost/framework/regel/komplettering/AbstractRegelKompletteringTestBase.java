@@ -4,6 +4,8 @@ import io.quarkus.test.InjectMock;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
+import se.fk.rimfrost.adapter.identity.adapter.IdentityAdapter;
+import se.fk.rimfrost.framework.handlaggning.model.ImmutableIdtyp;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableUppgift;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableUppgiftSpecifikation;
 import se.fk.rimfrost.framework.regel.RegelTestBase;
@@ -35,7 +37,9 @@ import java.util.UUID;
  * <ul>
  *   <li>{@code createOulUppgift(any())} — returns a pre-built {@code OperativUppgift}</li>
  *   <li>{@code getCorrelationData(any())} — returns a pre-built {@code OulCorrelationData}
- *       with the configured response topic as {@code replyTopic}</li>
+ *       with the configured response topic as {@code replyTopic} and an uppgift assigned to
+ *       {@code ID_TYP}/{@code ID_VARDE}</li>
+ *   <li>{@code IdentityAdapter.getIdentity(any())} — returns {@code ID_TYP}/{@code ID_VARDE}</li>
  *   <li>{@code endOulUppgift} and {@code cleanupCorrelation} — Mockito void defaults (do nothing)</li>
  * </ul>
  *
@@ -55,11 +59,18 @@ public abstract class AbstractRegelKompletteringTestBase extends RegelTestBase
 
    protected static final String PLANERAD_STATUS = "PLANERAD";
 
+   protected static final String ID_TYP = "PERSONNR";
+
+   protected static final String ID_VARDE = "19901010-1234";
+
    @ConfigProperty(name = "mp.messaging.outgoing.regel-responses.topic")
    protected String responseTopic;
 
    @InjectMock
-   OulUppgiftService oulUppgiftService;
+   protected OulUppgiftService oulUppgiftService;
+
+   @InjectMock
+   protected IdentityAdapter identityAdapter;
 
    /**
     * Resets external system state and reconfigures default stubs before each test.
@@ -85,6 +96,7 @@ public abstract class AbstractRegelKompletteringTestBase extends RegelTestBase
       }
 
       configureOulUppgiftServiceMocks();
+      configureIdentityAdapterMocks();
    }
 
    /**
@@ -98,6 +110,18 @@ public abstract class AbstractRegelKompletteringTestBase extends RegelTestBase
    {
       Mockito.when(oulUppgiftService.getCorrelationData(Mockito.any()))
             .thenReturn(defaultOulCorrelationData());
+   }
+
+   /**
+    * Configures {@link IdentityAdapter} to resolve the handläggare that the default
+    * correlation data's uppgift is assigned to, so REST requests pass {@code UserIdentityFilter}
+    * and {@code RegelAccessGuard} by default.
+    */
+   private void configureIdentityAdapterMocks() throws Exception
+   {
+      Mockito.when(identityAdapter.getIdentity(Mockito.any()))
+            .thenReturn(se.fk.rimfrost.adapter.identity.model.ImmutableIdtyp.builder().typId(ID_TYP).varde(ID_VARDE)
+                  .build());
    }
 
    private se.fk.rimfrost.framework.regel.oul.logic.entity.OulCorrelationData defaultOulCorrelationData()
@@ -126,6 +150,7 @@ public abstract class AbstractRegelKompletteringTestBase extends RegelTestBase
             .fSSAinformation("")
             .uppgiftSpecifikation(uppgiftSpecifikation)
             .uppgiftStatus(PLANERAD_STATUS)
+            .utforarId(ImmutableIdtyp.builder().typId(ID_TYP).varde(ID_VARDE).build())
             .build();
       return ImmutableOulCorrelationData.builder()
             .oulUppgiftId(DEFAULT_UPPGIFT_ID)
