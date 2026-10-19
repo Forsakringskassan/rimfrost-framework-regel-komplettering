@@ -8,9 +8,12 @@ import jakarta.ws.rs.Path;
 import java.util.List;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import se.fk.rimfrost.adapter.identity.exception.IdentityException;
+import se.fk.rimfrost.adapter.identity.model.ImmutableIdtyp;
 import se.fk.rimfrost.framework.handlaggning.adapter.HandlaggningAdapter;
 import se.fk.rimfrost.framework.handlaggning.exception.HandlaggningException;
 import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
@@ -20,24 +23,25 @@ import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringDone
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringService;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.CorrelationDataReadException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.EndOulUppgiftException;
-import se.fk.rimfrost.framework.regel.komplettering.logic.exception.HandlaggningNotFoundException;
-import se.fk.rimfrost.framework.regel.komplettering.logic.exception.HandlaggningReadException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.KompletteringIncompleteException;
-import se.fk.rimfrost.framework.regel.logic.dto.ImmutableRegelDataRequest;
-import se.fk.rimfrost.framework.regel.logic.dto.RegelDataRequest;
 import se.fk.rimfrost.framework.regel.komplettering.presentation.rest.RegelKompletteringController;
 import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.model.ErrorResponse;
+import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.model.GetUtokadUppgiftsbeskrivningResponse;
 import se.fk.rimfrost.framework.sid.adapter.SidAdapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 @QuarkusTest
 class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBase
 {
+   private static final String NOT_ASSIGNED_PATTERN = "(?i).*not assigned to uppgift.*";
+
    /** Minimal concrete subclass registered as a JAX-RS resource for this test. */
    @Path("/api/test")
    public static class TestKompletteringController extends RegelKompletteringController<String>
@@ -56,24 +60,6 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
    @InjectMock
    RegelKompletteringDoneHandler regelKompletteringDoneHandler;
 
-   private RegelDataRequest regelDataRequest(UUID handlaggningId)
-   {
-      return ImmutableRegelDataRequest.builder()
-            .id(UUID.randomUUID())
-            .handlaggningId(handlaggningId)
-            .aktivitetId(UUID.randomUUID())
-            .replyTo("reply-topic")
-            .type("test-type")
-            .kogitorootprocid("root-proc-id")
-            .kogitorootprociid(UUID.randomUUID())
-            .kogitoparentprociid(UUID.randomUUID())
-            .kogitoprocid("proc-id")
-            .kogitoprocinstanceid(UUID.randomUUID())
-            .kogitoprocist("proc-ist")
-            .kogitoprocversion("1.0")
-            .build();
-   }
-
    private Handlaggning createHandlaggning()
    {
       var yrkande = Mockito.mock(Yrkande.class);
@@ -81,6 +67,13 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
       var handlaggning = Mockito.mock(Handlaggning.class);
       Mockito.when(handlaggning.yrkande()).thenReturn(yrkande);
       return handlaggning;
+   }
+
+   @BeforeEach
+   void setupHandlaggning() throws HandlaggningException
+   {
+      var handlaggning = createHandlaggning();
+      Mockito.when(handlaggningAdapter.readHandlaggning(any())).thenReturn(handlaggning);
    }
 
    @Test
@@ -94,23 +87,23 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
             .then()
             .statusCode(204);
 
-      verify(regelKompletteringDoneHandler).handleKompletteringDone(handlaggningId);
+      verify(regelKompletteringDoneHandler).handleKompletteringDone(any());
    }
 
    @Test
-   @DisplayName("FRKOMP-FR-04.5: kompletteringDone returns 409 when no correlation data is in storage")
-   void should_return_409_on_done_when_correlation_data_read_exception()
+   @DisplayName("FRKOMP-FR-04.5: kompletteringDone returns 500 when no correlation data is in storage")
+   void should_return_500_on_done_when_correlation_data_read_exception()
    {
       var handlaggningId = UUID.randomUUID();
 
       Mockito.doThrow(new CorrelationDataReadException("")).when(regelKompletteringDoneHandler)
-            .handleKompletteringDone(handlaggningId);
+            .handleKompletteringDone(any());
 
       var response = RestAssured.given()
             .post("/api/test/" + handlaggningId + "/done")
             .then()
-            .statusCode(409).extract().as(ErrorResponse.class);
-      assertEquals(409, response.getCode());
+            .statusCode(500).extract().as(ErrorResponse.class);
+      assertEquals(500, response.getCode());
    }
 
    @Test
@@ -120,7 +113,7 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
       var handlaggningId = UUID.randomUUID();
 
       Mockito.doThrow(new KompletteringIncompleteException()).when(regelKompletteringDoneHandler)
-            .handleKompletteringDone(handlaggningId);
+            .handleKompletteringDone(any());
       var response = RestAssured.given()
             .post("/api/test/" + handlaggningId + "/done")
             .then()
@@ -130,32 +123,34 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
 
    @Test
    @DisplayName("FRKOMP-FR-04.7: kompletteringDone returns 404 when handlaggning not found")
-   void should_return_404_on_done_when_handlaggning_not_found()
+   void should_return_404_on_done_when_handlaggning_not_found() throws HandlaggningException
    {
       var handlaggningId = UUID.randomUUID();
 
-      Mockito.doThrow(new HandlaggningNotFoundException("", new Throwable())).when(regelKompletteringDoneHandler)
-            .handleKompletteringDone(handlaggningId);
+      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId))
+            .thenThrow(new HandlaggningException(HandlaggningException.ErrorType.NOT_FOUND, "Handlaggning not found"));
       var response = RestAssured.given()
             .post("/api/test/" + handlaggningId + "/done")
             .then()
             .statusCode(404).extract().as(ErrorResponse.class);
       assertEquals(404, response.getCode());
+      verifyNoInteractions(regelKompletteringDoneHandler);
    }
 
    @Test
-   @DisplayName("kompletteringDone returns 500 when handlaggning read fails")
-   void should_return_500_on_done_when_handlaggning_read_fails()
+   @DisplayName("FRKOMP-FR-04.13: kompletteringDone returns 500 when handlaggning read fails")
+   void should_return_500_on_done_when_handlaggning_read_fails() throws HandlaggningException
    {
       var handlaggningId = UUID.randomUUID();
 
-      Mockito.doThrow(new HandlaggningReadException("", new Throwable())).when(regelKompletteringDoneHandler)
-            .handleKompletteringDone(handlaggningId);
+      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId))
+            .thenThrow(new HandlaggningException(HandlaggningException.ErrorType.UNEXPECTED_ERROR, "Unexpected error"));
       var response = RestAssured.given()
             .post("/api/test/" + handlaggningId + "/done")
             .then()
             .statusCode(500).extract().as(ErrorResponse.class);
       assertEquals(500, response.getCode());
+      verifyNoInteractions(regelKompletteringDoneHandler);
    }
 
    @Test
@@ -165,7 +160,7 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
       var handlaggningId = UUID.randomUUID();
 
       Mockito.doThrow(new EndOulUppgiftException("", new Throwable())).when(regelKompletteringDoneHandler)
-            .handleKompletteringDone(handlaggningId);
+            .handleKompletteringDone(any());
       var response = RestAssured.given()
             .post("/api/test/" + handlaggningId + "/done")
             .then()
@@ -207,7 +202,7 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
 
       RestAssured.given()
             .body(requestBody)
-            .patch("/api/test/" + UUID.randomUUID())
+            .patch("/api/test/" + handlaggningId)
             .then()
             .statusCode(204);
    }
@@ -228,12 +223,83 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
 
       var response = RestAssured.given()
             .body(requestBody)
-            .patch("/api/test/" + UUID.randomUUID())
+            .patch("/api/test/" + handlaggningId)
             .then()
             .statusCode(500).extract().as(ErrorResponse.class);
 
       assertEquals(500, response.getCode());
       assertTrue(response.getMessage().matches("(?i).*conflict.*"));
       assertTrue(response.getMessage().matches("(?i).*programming fault.*"));
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-07.1: GET returns 401 when user identity cannot be verified")
+   void should_return_401_on_get_when_identity_unauthorized() throws Exception
+   {
+      Mockito.when(identityAdapter.getIdentity(any()))
+            .thenThrow(new IdentityException(IdentityException.ErrorType.UNAUTHORIZED, "no token"));
+
+      var response = RestAssured.given()
+            .get("/api/test/" + UUID.randomUUID())
+            .then()
+            .statusCode(401).extract().as(ErrorResponse.class);
+
+      assertEquals(401, response.getCode());
+      verifyNoInteractions(handlaggningAdapter, regelKompletteringService);
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-06.1: PATCH returns 403 and does not update handlaggning when handlaggare is not assigned to uppgift")
+   void should_return_403_on_patch_when_not_assigned_to_uppgift() throws Exception
+   {
+      givenUnassignedHandlaggare();
+
+      var response = RestAssured.given()
+            .body("")
+            .patch("/api/test/" + UUID.randomUUID())
+            .then()
+            .statusCode(403).extract().as(ErrorResponse.class);
+
+      assertEquals(403, response.getCode());
+      assertTrue(response.getMessage().matches(NOT_ASSIGNED_PATTERN));
+
+      verify(regelKompletteringService, never()).registerSvar(any(), any());
+      verify(handlaggningAdapter, never()).updateHandlaggning(any());
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-06.1: kompletteringDone returns 403 when handlaggare is not assigned to uppgift")
+   void should_return_403_on_done_when_not_assigned_to_uppgift() throws Exception
+   {
+      givenUnassignedHandlaggare();
+
+      var response = RestAssured.given()
+            .post("/api/test/" + UUID.randomUUID() + "/done")
+            .then()
+            .statusCode(403).extract().as(ErrorResponse.class);
+
+      assertEquals(403, response.getCode());
+      assertTrue(response.getMessage().matches(NOT_ASSIGNED_PATTERN));
+
+      verifyNoInteractions(regelKompletteringDoneHandler);
+   }
+
+   @Test
+   @DisplayName("GET utokadUppgiftsbeskrivning returns 200 for a verified user identity")
+   void should_return_200_on_get_utokad_uppgiftsbeskrivning() throws Exception
+   {
+      var response = RestAssured.given()
+            .get("/api/test/utokadUppgiftsbeskrivning")
+            .then()
+            .statusCode(200).extract().as(GetUtokadUppgiftsbeskrivningResponse.class);
+
+      assertEquals("TestUtokadUppgiftsbeskrivning", response.getBeskrivning());
+      verify(identityAdapter).getIdentity(any());
+   }
+
+   private void givenUnassignedHandlaggare() throws IdentityException
+   {
+      Mockito.when(identityAdapter.getIdentity(any()))
+            .thenReturn(ImmutableIdtyp.builder().typId(ID_TYP).varde("19700101-0000").build());
    }
 }

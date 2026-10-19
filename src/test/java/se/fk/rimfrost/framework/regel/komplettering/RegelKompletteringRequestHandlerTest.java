@@ -18,7 +18,6 @@ import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringRequ
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringService;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.CorrelationDataReadException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.EndOulUppgiftException;
-import se.fk.rimfrost.framework.regel.komplettering.logic.exception.HandlaggningReadException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.KompletteringIncompleteException;
 import se.fk.rimfrost.framework.regel.oul.logic.entity.OulUppgiftSpec;
 import se.fk.rimfrost.framework.regel.oul.logic.exception.OulServiceException;
@@ -180,20 +179,18 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
    @DisplayName("FRKOMP-FR-01.4, FRKOMP-FR-04.4: Kafka response with Utfall=JA is sent on successful komplettering")
    void should_send_success_response_on_successful_done_handling() throws Exception
    {
-      var handlaggningId = UUID.randomUUID();
       var handlaggning = createHandlaggning();
+      var handlaggningId = handlaggning.id();
 
-      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(false);
       Mockito.doNothing().when(oulUppgiftService).endOulUppgift(eq(DEFAULT_UPPGIFT_ID), Mockito.any());
       Mockito.doNothing().when(oulUppgiftService).cleanupCorrelation(handlaggningId);
       Mockito.when(handlaggningAdapter.updateHandlaggning(Mockito.any())).thenReturn(Mockito.mock(HandlaggningUpdate.class));
 
-      regelKompletteringRequestHandler.handleKompletteringDone(handlaggningId);
+      regelKompletteringRequestHandler.handleKompletteringDone(handlaggning);
       var response = regelKafkaConnector.waitForRegelResponse();
 
       assertEquals(Utfall.JA, response.getData().getUtfall());
-      verify(handlaggningAdapter).readHandlaggning(handlaggningId);
       verify(regelKompletteringService).isKompletteringRequired(Mockito.any());
       verify(oulUppgiftService).endOulUppgift(eq(DEFAULT_UPPGIFT_ID), Mockito.any());
       verify(oulUppgiftService).cleanupCorrelation(handlaggningId);
@@ -204,69 +201,51 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
    @DisplayName("FRKOMP-FR-04.5: CorrelationDataReadException is thrown if correlation data is missing")
    void should_throw_correlation_data_read_exception_on_missing_data_at_done_handling() throws Exception
    {
-      var handlaggningId = UUID.randomUUID();
+      var handlaggning = createHandlaggning();
+      var handlaggningId = handlaggning.id();
 
       Mockito.when(oulUppgiftService.getCorrelationData(handlaggningId)).thenReturn(null);
 
       assertThrows(CorrelationDataReadException.class,
-            () -> regelKompletteringRequestHandler.handleKompletteringDone(handlaggningId));
-   }
-
-   @Test
-   @DisplayName("HandlaggningReadException is thrown on failure to read handlaggning")
-   void should_throw_handlaggning_read_exception_on_handlaggning_read_failure_at_done_handling() throws Exception
-   {
-      var handlaggningId = UUID.randomUUID();
-
-      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId))
-            .thenThrow(new HandlaggningException(HandlaggningException.ErrorType.UNEXPECTED_ERROR, ""));
-
-      assertThrows(HandlaggningReadException.class,
-            () -> regelKompletteringRequestHandler.handleKompletteringDone(handlaggningId));
+            () -> regelKompletteringRequestHandler.handleKompletteringDone(handlaggning));
    }
 
    @Test
    @DisplayName("FRKOMP-FR-04.3: KompletteringIncompleteException is thrown if komplettering is not complete")
    void should_throw_komplettering_incomplete_exception_on_komplettering_still_required_at_done_handling() throws Exception
    {
-      var handlaggningId = UUID.randomUUID();
       var handlaggning = createHandlaggning();
 
-      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(true);
 
       assertThrows(KompletteringIncompleteException.class,
-            () -> regelKompletteringRequestHandler.handleKompletteringDone(handlaggningId));
+            () -> regelKompletteringRequestHandler.handleKompletteringDone(handlaggning));
    }
 
    @Test
    @DisplayName("EndOulUppgiftException is thrown on failure to end oul uppgift")
    void should_throw_end_oul_uppgift_exception_on_oul_uppgift_end_failure_at_done_handling() throws Exception
    {
-      var handlaggningId = UUID.randomUUID();
       var handlaggning = createHandlaggning();
 
-      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(false);
       Mockito.doThrow(new OulServiceException(OulServiceException.ErrorType.UNEXPECTED_ERROR, "")).when(oulUppgiftService)
             .endOulUppgift(eq(DEFAULT_UPPGIFT_ID), Mockito.any());
 
-      assertThrows(EndOulUppgiftException.class, () -> regelKompletteringRequestHandler.handleKompletteringDone(handlaggningId));
+      assertThrows(EndOulUppgiftException.class, () -> regelKompletteringRequestHandler.handleKompletteringDone(handlaggning));
    }
 
    @Test
    @DisplayName("FRKOMP-FR-04.8: 404 end fault is treated as 200 at end oul uppgift")
    void should_not_throw_end_oul_uppgift_exception_on_oul_uppgift_end_failure_with_404_at_done_handling() throws Exception
    {
-      var handlaggningId = UUID.randomUUID();
       var handlaggning = createHandlaggning();
 
-      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(false);
       Mockito.doThrow(new OulServiceException(OulServiceException.ErrorType.NOT_FOUND, "")).when(oulUppgiftService)
             .endOulUppgift(eq(DEFAULT_UPPGIFT_ID), Mockito.any());
 
-      regelKompletteringRequestHandler.handleKompletteringDone(handlaggningId);
+      regelKompletteringRequestHandler.handleKompletteringDone(handlaggning);
 
       var response = regelKafkaConnector.waitForRegelResponse();
       assertEquals(Utfall.JA, response.getData().getUtfall());
@@ -276,20 +255,18 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
    @DisplayName("Handlaggning update failure does not throw exception")
    void should_not_throw_on_handlaggning_update_failure_at_done_handling() throws Exception
    {
-      var handlaggningId = UUID.randomUUID();
       var handlaggning = createHandlaggning();
+      var handlaggningId = handlaggning.id();
 
-      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(false);
       Mockito.doNothing().when(oulUppgiftService).endOulUppgift(eq(DEFAULT_UPPGIFT_ID), Mockito.any());
       Mockito.doNothing().when(oulUppgiftService).cleanupCorrelation(handlaggningId);
       Mockito.when(handlaggningAdapter.updateHandlaggning(Mockito.any())).thenThrow(new RuntimeException());
 
-      regelKompletteringRequestHandler.handleKompletteringDone(handlaggningId);
+      regelKompletteringRequestHandler.handleKompletteringDone(handlaggning);
       var response = regelKafkaConnector.waitForRegelResponse();
 
       assertEquals(Utfall.JA, response.getData().getUtfall());
-      verify(handlaggningAdapter).readHandlaggning(handlaggningId);
       verify(regelKompletteringService).isKompletteringRequired(Mockito.any());
       verify(oulUppgiftService).endOulUppgift(eq(DEFAULT_UPPGIFT_ID), Mockito.any());
       verify(oulUppgiftService).cleanupCorrelation(handlaggningId);
