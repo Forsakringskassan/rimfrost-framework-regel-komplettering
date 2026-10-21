@@ -21,9 +21,13 @@ import se.fk.rimfrost.framework.handlaggning.model.HandlaggningUpdate;
 import se.fk.rimfrost.framework.regel.integration.config.RegelConfigProvider;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringDoneHandler;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringService;
+import se.fk.rimfrost.framework.regel.komplettering.logic.dto.Informationsaccess;
+import se.fk.rimfrost.framework.regel.komplettering.logic.dto.RegelKompletteringReadResponse;
+import se.fk.rimfrost.framework.regel.komplettering.logic.exception.CorrelationDataReadException;
 import se.fk.rimfrost.framework.regel.komplettering.presentation.rest.guard.RegelAccessGuard;
 import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.RegelOulControllerApi;
 import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.model.GetUtokadUppgiftsbeskrivningResponse;
+import se.fk.rimfrost.framework.regel.oul.logic.OulUppgiftService;
 
 /**
  * Abstract base controller for komplettering endpoints. Extend with the regel's own
@@ -56,6 +60,9 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
    @Inject
    RegelAccessGuard regelAccessGuard;
 
+   @Inject
+   OulUppgiftService oulUppgiftService;
+
    /**
     * Returns the data the handläggare needs to register the sökande's svar.
     *
@@ -68,7 +75,9 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
    {
       var handlaggning = fetchHandlaggning(handlaggningId);
       regelAccessGuard.verifyAccess(handlaggning);
-      return Response.ok(kompletteringService.readSvarData(handlaggning)).build();
+      return Response.ok(new RegelKompletteringReadResponse<>(
+            kompletteringService.readSvarData(handlaggning), buildInformationsaccess(handlaggningId)))
+            .build();
    }
 
    /**
@@ -165,6 +174,25 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
       response.setBeskrivning(regelConfig.getUtokadUppgiftsbeskrivning().getBeskrivning());
 
       return response;
+   }
+
+   /**
+    * Builds the informationsaccess data returned alongside the rule-specific response (FRKOMP-FR-06).
+    * Runs after {@link RegelAccessGuard#verifyAccess}, so correlation data and the handläggare's
+    * identity are already known to be present.
+    */
+   private Informationsaccess buildInformationsaccess(UUID handlaggningId)
+   {
+      var correlation = oulUppgiftService.getCorrelationData(handlaggningId);
+      if (correlation == null)
+      {
+         throw new CorrelationDataReadException("Correlation data not found");
+      }
+      var regel = regelConfigProvider.getConfig().getRegel();
+      return new Informationsaccess(
+            correlation.oulUppgiftId(),
+            regel.getId(),
+            String.valueOf(regel.getVersion()));
    }
 
    private Response.Status toHttpStatus(HandlaggningException e)

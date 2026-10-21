@@ -26,12 +26,15 @@ import se.fk.rimfrost.framework.sid.adapter.SidAdapter;
 import se.fk.rimfrost.framework.sid.exception.SidException;
 import se.fk.rimfrost.adapter.identity.model.ImmutableIdtyp;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @QuarkusTest
 class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletteringTestBase
@@ -207,6 +210,25 @@ class RegelKompletteringControllerSidCheckTest extends AbstractRegelKompletterin
             .get("/api/test/" + UUID.randomUUID())
             .then()
             .statusCode(expectedHttpStatus(errorType.name()));
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-06.4: GET does not return informationsaccess when the SID check fails")
+   void should_not_return_informationsaccess_on_sid_check_failure_at_get() throws Exception
+   {
+      var handlaggningId = UUID.randomUUID();
+      var handlaggning = createHandlaggning();
+
+      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
+      Mockito.when(sidAdapter.containsSid(Mockito.anyList())).thenReturn(true);
+      Mockito.when(permissionsAdapter.hasSidPermission(any(), any())).thenReturn(false);
+      RestAssured.given()
+            .get("/api/test/" + handlaggningId)
+            .then()
+            .statusCode(403)
+            .body(not(containsString("informationsaccess")));
+
+      verifyNoInteractions(regelKompletteringService);
    }
 
    private void givenHandlaggareIdentity(String typId, String varde) throws IdentityException

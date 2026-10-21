@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import se.fk.rimfrost.adapter.identity.exception.IdentityException;
 import se.fk.rimfrost.adapter.identity.model.ImmutableIdtyp;
+import se.fk.rimfrost.adapter.permissions.adapter.PermissionsAdapter;
 import se.fk.rimfrost.framework.handlaggning.adapter.HandlaggningAdapter;
 import se.fk.rimfrost.framework.handlaggning.exception.HandlaggningException;
 import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
@@ -29,6 +30,8 @@ import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.
 import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.model.GetUtokadUppgiftsbeskrivningResponse;
 import se.fk.rimfrost.framework.sid.adapter.SidAdapter;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -285,6 +288,63 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
    }
 
    @Test
+   @DisplayName("FRKOMP-FR-06.1: GET returns the rule's response in data together with informationsaccess")
+   void should_return_rule_response_as_data_with_informationsaccess_on_get() throws Exception
+   {
+      var handlaggningId = givenReadableHandlaggning();
+
+      RestAssured.given()
+            .get("/api/test/" + handlaggningId)
+            .then()
+            .statusCode(200)
+            .body("data", equalTo("response"))
+            .body("informationsaccess", notNullValue());
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-06.2: informationsaccess.uppgiftId is the OUL uppgift id from the correlation data")
+   void should_return_oul_uppgift_id_in_informationsaccess_on_get() throws Exception
+   {
+      var handlaggningId = givenReadableHandlaggning();
+
+      RestAssured.given()
+            .get("/api/test/" + handlaggningId)
+            .then()
+            .statusCode(200)
+            .body("informationsaccess.uppgiftId", equalTo(DEFAULT_UPPGIFT_ID.toString()));
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-06.2: GET returns 500 and does not read data when no correlation data is stored")
+   void should_return_500_without_correlation_data_on_get() throws Exception
+   {
+      var handlaggningId = givenReadableHandlaggning();
+      Mockito.when(oulUppgiftService.getCorrelationData(Mockito.any())).thenReturn(null);
+
+      RestAssured.given()
+            .get("/api/test/" + handlaggningId)
+            .then()
+            .statusCode(500);
+
+      verify(regelKompletteringService, never()).readSvarData(any());
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-06.3: informationsaccess.regelId and regelVersion come from the rule's config.yaml")
+   void should_return_regel_id_and_version_from_config_on_get() throws Exception
+   {
+      var handlaggningId = givenReadableHandlaggning();
+
+      // Values from src/test/resources/config-test.yaml
+      RestAssured.given()
+            .get("/api/test/" + handlaggningId)
+            .then()
+            .statusCode(200)
+            .body("informationsaccess.regelId", equalTo("a11f3429-3a6b-4389-ba1c-c2747b0fb45b"))
+            .body("informationsaccess.regelVersion", equalTo("1"));
+   }
+
+   @Test
    @DisplayName("GET utokadUppgiftsbeskrivning returns 200 for a verified user identity")
    void should_return_200_on_get_utokad_uppgiftsbeskrivning() throws Exception
    {
@@ -301,5 +361,15 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
    {
       Mockito.when(identityAdapter.getIdentity(any()))
             .thenReturn(ImmutableIdtyp.builder().typId(ID_TYP).varde("19700101-0000").build());
+   }
+
+   private UUID givenReadableHandlaggning() throws Exception
+   {
+      var handlaggningId = UUID.randomUUID();
+      var handlaggning = createHandlaggning();
+      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
+      Mockito.when(sidAdapter.containsSid(Mockito.anyList())).thenReturn(false);
+      Mockito.when(regelKompletteringService.readSvarData(Mockito.any())).thenReturn("response");
+      return handlaggningId;
    }
 }
