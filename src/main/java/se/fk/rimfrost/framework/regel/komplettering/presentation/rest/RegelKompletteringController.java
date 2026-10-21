@@ -22,6 +22,8 @@ import se.fk.rimfrost.framework.handlaggning.model.HandlaggningUpdate;
 import se.fk.rimfrost.framework.regel.integration.config.RegelConfigProvider;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringDoneHandler;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringService;
+import se.fk.rimfrost.framework.regel.komplettering.logic.dto.Informationsaccess;
+import se.fk.rimfrost.framework.regel.komplettering.logic.dto.RegelKompletteringReadResponse;
 import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.RegelOulControllerApi;
 import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.model.GetUtokadUppgiftsbeskrivningResponse;
 import se.fk.rimfrost.framework.regel.oul.logic.OulUppgiftService;
@@ -79,7 +81,9 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
          unassignUppgift(handlaggningId);
          return Response.status(Response.Status.FORBIDDEN.getStatusCode(), "Skyddad identitet").build();
       }
-      return Response.ok(kompletteringService.readSvarData(handlaggning)).build();
+      var data = kompletteringService.readSvarData(handlaggning);
+      return Response.ok(new RegelKompletteringReadResponse<>(data, buildInformationsaccess(handlaggningId)))
+            .build();
    }
 
    /**
@@ -211,6 +215,20 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
          return;
       }
       oulUppgiftService.tryUnassignOulUppgift(oulUppgiftId);
+   }
+
+   /**
+    * Builds the informationsaccess data returned alongside the rule-specific response (FRKOMP-FR-06).
+    * The uppgift id is {@code null} when no correlation data is stored for the handläggning.
+    */
+   private Informationsaccess buildInformationsaccess(UUID handlaggningId)
+   {
+      var correlation = oulUppgiftService.getCorrelationData(handlaggningId);
+      var regel = regelConfigProvider.getConfig().getRegel();
+      return new Informationsaccess(
+            correlation != null ? correlation.oulUppgiftId() : null,
+            regel.getId(),
+            String.valueOf(regel.getVersion()));
    }
 
    /**
