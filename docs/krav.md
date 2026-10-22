@@ -112,6 +112,13 @@ med `uppgiftId`. Svaret bär därför den data som BFF:en inte själv har (FKPOC
   från regelns `config.yaml`.
 - **FRKOMP-FR-06.4** Containern ska bara returneras när SID-kontrollen har passerat.
 
+### FRKOMP-FR-07 — Skicka processvy-länk till OUL
+
+- **FRKOMP-FR-07.1** När ramverket bygger `OulUppgiftSpec` ska regelanropets `processvyUrl` skickas
+  med, på samma sätt som `aktivitetId` redan skickas med.
+- **FRKOMP-FR-07.2** `processvyUrl` är valfri. Ett regelanrop utan `processvyUrl` skapar en
+  OUL-uppgift som vanligt, men utan processvy.
+
 ---
 
 ## 2. Icke-funktionella krav
