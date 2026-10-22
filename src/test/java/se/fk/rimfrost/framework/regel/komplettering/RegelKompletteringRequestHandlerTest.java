@@ -12,6 +12,8 @@ import se.fk.rimfrost.framework.handlaggning.exception.HandlaggningException;
 import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
 import se.fk.rimfrost.framework.handlaggning.model.HandlaggningUpdate;
 import se.fk.rimfrost.framework.handlaggning.model.Yrkande;
+import se.fk.rimfrost.framework.regel.RegelKafkaConnector;
+import se.fk.rimfrost.framework.regel.RegelTestData;
 import se.fk.rimfrost.framework.regel.Utfall;
 import se.fk.rimfrost.framework.regel.error.RegelFelkod;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringRequestHandler;
@@ -28,6 +30,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.timeout;
@@ -116,6 +119,48 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
       assertNotNull(oulUppgiftSpec.erbjudande());
       assertEquals(UUID.fromString("a42ffaed-2f20-47e8-8499-f2f79ae2f45f"), oulUppgiftSpec.uppgiftSpecifikationId());
       assertEquals(1, oulUppgiftSpec.uppgiftSpecifikationVersion());
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-07.1: OUL uppgift is created with aktivitetId and processvyUrl from the regel request")
+   void should_include_aktivitet_id_and_processvy_url_in_oul_spec() throws Exception
+   {
+      var handlaggningId = UUID.randomUUID();
+      var handlaggning = createHandlaggning();
+
+      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
+      Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(true);
+
+      var payload = RegelTestData.newRegelRequestMessagePayload(handlaggningId.toString(), responseTopic);
+      payload.getData().setProcessvyUrl("/process/vah");
+      inMemoryConnector.source(RegelKafkaConnector.regelRequestsChannel).send(payload);
+
+      var captor = ArgumentCaptor.forClass(OulUppgiftSpec.class);
+      verify(oulUppgiftService, timeout(5000)).createOulUppgift(captor.capture());
+      var oulUppgiftSpec = captor.getValue();
+
+      assertEquals(UUID.fromString(payload.getData().getAktivitetId()), oulUppgiftSpec.aktivitetId());
+      assertEquals("/process/vah", oulUppgiftSpec.processvyUrl());
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-07.2: OUL uppgift is created without processvyUrl when the regel request lacks it")
+   void should_create_oul_uppgift_without_processvy_url() throws Exception
+   {
+      var handlaggningId = UUID.randomUUID();
+      var handlaggning = createHandlaggning();
+
+      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
+      Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(true);
+
+      regelKafkaConnector.sendRegelRequest(handlaggningId.toString(), responseTopic);
+
+      var captor = ArgumentCaptor.forClass(OulUppgiftSpec.class);
+      verify(oulUppgiftService, timeout(5000)).createOulUppgift(captor.capture());
+      var oulUppgiftSpec = captor.getValue();
+
+      assertNotNull(oulUppgiftSpec.aktivitetId());
+      assertNull(oulUppgiftSpec.processvyUrl());
    }
 
    @Test

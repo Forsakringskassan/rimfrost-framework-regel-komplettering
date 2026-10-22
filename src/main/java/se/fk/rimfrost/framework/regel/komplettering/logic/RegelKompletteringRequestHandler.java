@@ -84,6 +84,7 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
                .url(regelConfig.getUppgift().getPath())
                .erbjudande(buildErbjudande(handlaggning.yrkande().erbjudandeId(), erbjudandeNamn))
                .aktivitetId(request.aktivitetId())
+               .processvyUrl(request.processvyUrl())
                .uppgiftSpecifikationId(regelConfig.getSpecifikation().getId())
                .uppgiftSpecifikationVersion(regelConfig.getSpecifikation().getVersion())
                .build();
