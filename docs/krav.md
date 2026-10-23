@@ -72,7 +72,7 @@ underliggande ramverk upprepas inte.
 
 - **FRKOMP-FR-05.1** Innan `readSvarData()` anropas vid `GET /{handlaggningId}` ska ramverket kontrollera
   om någon av handläggningsärendets individer har skyddad identitet via SID-tjänsten.
-- **FRKOMP-FR-05.2** Individerna hämtas från `handlaggning.yrkande().rollerIYrkande()` och
+- **FRKOMP-FR-05.2** Individerna hämtas från `handlaggning.yrkande().individYrkandeRoller()` och
   skickas i en `POST /sid/status`-förfrågan till SID-tjänsten.
 - **FRKOMP-FR-05.3** Om en eller flera individer har skyddad identitet ska ramverket returnera
   HTTP 403 och `readSvarData()` ska inte anropas.

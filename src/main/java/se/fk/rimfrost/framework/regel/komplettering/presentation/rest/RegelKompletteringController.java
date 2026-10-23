@@ -245,7 +245,7 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
     */
    private List<Idtyp> extractIndivider(Handlaggning handlaggning)
    {
-      return handlaggning.yrkande().rollerIYrkande()
+      return handlaggning.yrkande().individYrkandeRoller()
             .stream().<se.fk.rimfrost.framework.sid.model.Idtyp> map(
                   roll -> se.fk.rimfrost.framework.sid.model.ImmutableIdtyp.builder()
                         .typId(roll.individ().typId())

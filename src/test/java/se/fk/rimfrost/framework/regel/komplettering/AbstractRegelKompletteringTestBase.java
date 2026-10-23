@@ -121,7 +121,7 @@ public abstract class AbstractRegelKompletteringTestBase extends RegelTestBase
       var uppgift = ImmutableUppgift.builder()
             .id(DEFAULT_UPPGIFT_ID)
             .version(1)
-            .skapadTS(OffsetDateTime.now())
+            .skapadTs(OffsetDateTime.now())
             .aktivitetId(UUID.randomUUID())
             .fSSAinformation("")
             .uppgiftSpecifikation(uppgiftSpecifikation)

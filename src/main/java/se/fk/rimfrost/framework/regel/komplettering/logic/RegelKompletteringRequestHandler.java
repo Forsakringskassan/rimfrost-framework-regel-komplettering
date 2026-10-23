@@ -60,7 +60,7 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
       {
          cloudEvent = createCloudEvent(request);
          var handlaggning = getHandlaggning(request.handlaggningId(), cloudEvent);
-         var erbjudandeNamn = erbjudandeReferensdata.getErbjudandeNamn(handlaggning.yrkande().ingangtypId());
+         var erbjudandeNamn = erbjudandeReferensdata.getErbjudandeNamn(handlaggning.yrkande().erbjudandeId());
 
          if (!regelKompletteringService.isKompletteringRequired(handlaggning))
          {
@@ -82,8 +82,7 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
                .verksamhetslogik(regelConfig.getSpecifikation().getVerksamhetslogik())
                .roll(regelConfig.getSpecifikation().getRoll())
                .url(regelConfig.getUppgift().getPath())
-               .erbjudande(buildErbjudande(handlaggning.yrkande().ingangtypId(), erbjudandeNamn))
-               .assignable(true)
+               .erbjudande(buildErbjudande(handlaggning.yrkande().erbjudandeId(), erbjudandeNamn))
                .aktivitetId(request.aktivitetId())
                .uppgiftSpecifikationId(regelConfig.getSpecifikation().getId())
                .uppgiftSpecifikationVersion(regelConfig.getSpecifikation().getVersion())
@@ -162,10 +161,16 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
             .from(uppgift)
             .version(uppgift.version() + 1)
             .uppgiftStatus(AVSLUTAD)
-            .utfordTS(OffsetDateTime.now())
+            .utfordTs(OffsetDateTime.now())
             .build();
       var handlaggningUpdate = ImmutableHandlaggningUpdate.builder()
-            .handlaggning(handlaggning)
+            .id(handlaggning.id())
+            .version(handlaggning.version())
+            .yrkande(handlaggning.yrkande())
+            .processInstansId(handlaggning.processInstansId())
+            .skapadTS(handlaggning.skapadTS())
+            .avslutadTS(handlaggning.avslutadTS())
+            .handlaggningspecifikationId(handlaggning.handlaggningspecifikationId())
             .uppgift(updatedUppgift)
             .build();
       try
