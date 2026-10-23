@@ -106,8 +106,8 @@ med `uppgiftId`. Svaret bär därför den data som BFF:en inte själv har (FKPOC
   informationsaccessdata. Fältet `data` är det som BFF:en lägger i eventets
   `visadInformation`.
 - **FRKOMP-FR-06.2** `informationsaccess.uppgiftId` ska vara OUL-uppgiftens id från lagrad
-  korrelationsdata. Det anger uppgiftsinstansen. Om korrelationsdata saknas ska fältet vara
-  `null`.
+  korrelationsdata. Det anger uppgiftsinstansen. Om korrelationsdata saknas ska ramverket
+  returnera HTTP 500, eftersom uppgiften inte kan identifieras utan den.
 - **FRKOMP-FR-06.3** `informationsaccess.regelId` och `informationsaccess.regelVersion` ska hämtas
   från regelns `config.yaml`.
 - **FRKOMP-FR-06.4** Containern ska bara returneras när SID-kontrollen har passerat.
