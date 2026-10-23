@@ -75,8 +75,9 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
    {
       var handlaggning = fetchHandlaggning(handlaggningId);
       regelAccessGuard.verifyAccess(handlaggning);
-      return Response.ok(new RegelKompletteringReadResponse<>(
-            kompletteringService.readSvarData(handlaggning), buildInformationsaccess(handlaggningId)))
+      var informationsaccess = buildInformationsaccess(handlaggningId);
+      var data = kompletteringService.readSvarData(handlaggning);
+      return Response.ok(new RegelKompletteringReadResponse<>(data, informationsaccess))
             .build();
    }
 
@@ -178,14 +179,15 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
 
    /**
     * Builds the informationsaccess data returned alongside the rule-specific response (FRKOMP-FR-06).
-    * Runs after {@link RegelAccessGuard#verifyAccess}, so correlation data and the handläggare's
-    * identity are already known to be present.
+    * Throws HTTP 500 when no correlation data is stored, since the uppgift cannot be identified
+    * without it.
     */
    private Informationsaccess buildInformationsaccess(UUID handlaggningId)
    {
       var correlation = oulUppgiftService.getCorrelationData(handlaggningId);
       if (correlation == null)
       {
+         LOGGER.error("Correlation data not found for handlaggningId: {}", handlaggningId);
          throw new CorrelationDataReadException("Correlation data not found");
       }
       var regel = regelConfigProvider.getConfig().getRegel();
