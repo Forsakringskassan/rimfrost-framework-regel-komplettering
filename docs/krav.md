@@ -72,7 +72,7 @@ underliggande ramverk upprepas inte.
 
 - **FRKOMP-FR-05.1** Innan `readSvarData()` anropas vid `GET /{handlaggningId}` ska ramverket kontrollera
   om någon av handläggningsärendets individer har skyddad identitet via SID-tjänsten.
-- **FRKOMP-FR-05.2** Individerna hämtas från `handlaggning.yrkande().individYrkandeRoller()` och
+- **FRKOMP-FR-05.2** Individerna hämtas från `handlaggning.yrkande().rollerIYrkande()` och
   skickas i en `POST /sid/status`-förfrågan till SID-tjänsten.
 - **FRKOMP-FR-05.3** Om en eller flera individer har skyddad identitet ska ramverket returnera
   HTTP 403 och `readSvarData()` ska inte anropas.
@@ -106,8 +106,8 @@ med `uppgiftId`. Svaret bär därför den data som BFF:en inte själv har (FKPOC
   informationsaccessdata. Fältet `data` är det som BFF:en lägger i eventets
   `visadInformation`.
 - **FRKOMP-FR-06.2** `informationsaccess.uppgiftId` ska vara OUL-uppgiftens id från lagrad
-  korrelationsdata. Det anger uppgiftsinstansen. Om korrelationsdata saknas ska fältet vara
-  `null`.
+  korrelationsdata. Det anger uppgiftsinstansen. Om korrelationsdata saknas ska ramverket
+  returnera HTTP 500, eftersom uppgiften inte kan identifieras utan den.
 - **FRKOMP-FR-06.3** `informationsaccess.regelId` och `informationsaccess.regelVersion` ska hämtas
   från regelns `config.yaml`.
 - **FRKOMP-FR-06.4** Containern ska bara returneras när SID-kontrollen har passerat.

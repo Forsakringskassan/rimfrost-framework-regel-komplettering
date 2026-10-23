@@ -33,7 +33,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
@@ -247,8 +246,8 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
    }
 
    @Test
-   @DisplayName("FRKOMP-FR-06.2: informationsaccess.uppgiftId is null when no correlation data is stored")
-   void should_return_null_uppgift_id_without_correlation_data_on_get() throws Exception
+   @DisplayName("FRKOMP-FR-06.2: GET returns 500 and does not read data when no correlation data is stored")
+   void should_return_500_without_correlation_data_on_get() throws Exception
    {
       var handlaggningId = givenReadableHandlaggning();
       Mockito.when(oulUppgiftService.getCorrelationData(Mockito.any())).thenReturn(null);
@@ -256,8 +255,9 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
       RestAssured.given()
             .get("/api/test/" + handlaggningId)
             .then()
-            .statusCode(200)
-            .body("informationsaccess.uppgiftId", nullValue());
+            .statusCode(500);
+
+      verify(regelKompletteringService, Mockito.never()).readSvarData(Mockito.any());
    }
 
    @Test

@@ -81,8 +81,9 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
          unassignUppgift(handlaggningId);
          return Response.status(Response.Status.FORBIDDEN.getStatusCode(), "Skyddad identitet").build();
       }
+      var informationsaccess = buildInformationsaccess(handlaggningId);
       var data = kompletteringService.readSvarData(handlaggning);
-      return Response.ok(new RegelKompletteringReadResponse<>(data, buildInformationsaccess(handlaggningId)))
+      return Response.ok(new RegelKompletteringReadResponse<>(data, informationsaccess))
             .build();
    }
 
@@ -219,14 +220,21 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
 
    /**
     * Builds the informationsaccess data returned alongside the rule-specific response (FRKOMP-FR-06).
-    * The uppgift id is {@code null} when no correlation data is stored for the handläggning.
+    * Throws HTTP 500 when no correlation data is stored, since the uppgift cannot be identified
+    * without it.
     */
    private Informationsaccess buildInformationsaccess(UUID handlaggningId)
    {
       var correlation = oulUppgiftService.getCorrelationData(handlaggningId);
+      if (correlation == null)
+      {
+         LOGGER.error("Correlation data not found for handlaggningId: {}", handlaggningId);
+         throw new WebApplicationException(buildErrorResponse(
+               Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), "Correlation data not found"));
+      }
       var regel = regelConfigProvider.getConfig().getRegel();
       return new Informationsaccess(
-            correlation != null ? correlation.oulUppgiftId() : null,
+            correlation.oulUppgiftId(),
             regel.getId(),
             String.valueOf(regel.getVersion()));
    }
