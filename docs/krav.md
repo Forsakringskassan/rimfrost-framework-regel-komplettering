@@ -111,6 +111,9 @@ med `uppgiftId`. Svaret bär därför den data som BFF:en inte själv har (FKPOC
 - **FRKOMP-FR-06.3** `informationsaccess.regelId` och `informationsaccess.regelVersion` ska hämtas
   från regelns `config.yaml`.
 - **FRKOMP-FR-06.4** Containern ska bara returneras när SID-kontrollen har passerat.
+- **FRKOMP-FR-06.5** `informationsaccess.anvandare` ska vara den inloggade handläggarens
+  identitet (`typId` och `varde`), som ramverket hämtar ur anropets token. Då behöver
+  BFF:en inte själv tolka token.
 
 ---
 
