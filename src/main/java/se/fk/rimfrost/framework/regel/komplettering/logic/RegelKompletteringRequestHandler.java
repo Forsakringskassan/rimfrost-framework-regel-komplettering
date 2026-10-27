@@ -14,8 +14,6 @@ import se.fk.rimfrost.framework.regel.Utfall;
 import se.fk.rimfrost.framework.regel.error.RegelFelkod;
 import se.fk.rimfrost.framework.regel.integration.kafka.dto.ImmutableRegelResponse;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.CorrelationDataReadException;
-import se.fk.rimfrost.framework.regel.komplettering.logic.exception.HandlaggningNotFoundException;
-import se.fk.rimfrost.framework.regel.komplettering.logic.exception.HandlaggningReadException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.KompletteringIncompleteException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.EndOulUppgiftException;
 import se.fk.rimfrost.framework.regel.logic.RegelCancelledException;
@@ -104,33 +102,14 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
    }
 
    @Override
-   public void handleKompletteringDone(UUID handlaggningId)
+   public void handleKompletteringDone(Handlaggning handlaggning)
    {
-      OulCorrelationData correlation = oulUppgiftService.getCorrelationData(handlaggningId);
+      OulCorrelationData correlation = oulUppgiftService.getCorrelationData(handlaggning.id());
 
       if (correlation == null)
       {
-         LOGGER.error("Failed to read correlation data in handleKompletteringDone for handlaggningId: {}", handlaggningId);
-         throw new CorrelationDataReadException("Failed to read correlation data for handlaggningId: " + handlaggningId);
-      }
-
-      Handlaggning handlaggning;
-      try
-      {
-         handlaggning = handlaggningAdapter.readHandlaggning(handlaggningId);
-      }
-      catch (HandlaggningException e)
-      {
-         LOGGER.error("Error in handleKompletteringDone() while trying to read handlaggning with id: {}", handlaggningId, e);
-
-         if (e.getErrorType() == HandlaggningException.ErrorType.NOT_FOUND)
-         {
-            throw new HandlaggningNotFoundException(e.getMessage(), e);
-         }
-         else
-         {
-            throw new HandlaggningReadException(e.getMessage(), e);
-         }
+         LOGGER.error("Failed to read correlation data in handleKompletteringDone for handlaggningId: {}", handlaggning.id());
+         throw new CorrelationDataReadException("Failed to read correlation data for handlaggningId: " + handlaggning.id());
       }
 
       if (regelKompletteringService.isKompletteringRequired(handlaggning))
@@ -147,14 +126,14 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
          if (e.getErrorType() != OulServiceException.ErrorType.NOT_FOUND)
          {
             LOGGER.error("Error in handleKompletteringDone() while trying to end operativ uppgift for handlaggningId: {}",
-                  handlaggningId, e);
+                  handlaggning.id(), e);
             throw new EndOulUppgiftException(e.getMessage(), e);
          }
       }
 
-      sendRegelSuccessResponse(handlaggningId, correlation.cloudEventData(), Utfall.JA, correlation.replyTopic());
+      sendRegelSuccessResponse(handlaggning.id(), correlation.cloudEventData(), Utfall.JA, correlation.replyTopic());
 
-      oulUppgiftService.cleanupCorrelation(handlaggningId);
+      oulUppgiftService.cleanupCorrelation(handlaggning.id());
 
       var uppgift = correlation.uppgift();
       var updatedUppgift = ImmutableUppgift.builder()
@@ -183,20 +162,20 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
          {
             LOGGER.error(
                   "Version conflict error in handleKompletteringDone() while updating handlaggning for id: {}. Programming fault? — RegelResponse already sent, ignoring failure",
-                  handlaggningId, e);
+                  handlaggning.id(), e);
          }
          else
          {
             LOGGER.error(
                   "Error in handleKompletteringDone() while updating handlaggning for id: {} — RegelResponse already sent, ignoring failure",
-                  handlaggningId, e);
+                  handlaggning.id(), e);
          }
       }
       catch (Exception e)
       {
          LOGGER.error(
                "Error in handleKompletteringDone() while updating handlaggning for id: {} — RegelResponse already sent, ignoring failure",
-               handlaggningId, e);
+               handlaggning.id(), e);
       }
    }
 

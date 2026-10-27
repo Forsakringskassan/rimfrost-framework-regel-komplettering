@@ -26,3 +26,7 @@ och [rimfrost-framework-regel-oul](https://github.com/Forsakringskassan/rimfrost
   `isKompletteringRequired()` implementeras av regelimplementationer) för att kontrollera om attribut saknas.
 - **REST-flöde för komplettering** — exponerar `GET/PATCH/POST /{handlaggningId}`
   för handläggarportalen.
+- **Automatisk kontroll av identitet vid REST fråga** — kontrollerar att det identitets-token som inkluderas med `Authorization`-headern är giltigt och sparar läst identitet i `UserIdentityHolder`.
+- **Guard util för access kontroll** — tillhandahåller en guard util klass `RegelAccessGuard` för kontroll att användare är tilldelad till uppgift samt att de har de rättigheter som behövs ifall uppgiften innehåller skyddade identiteter.
+- **Automatisk access kontroll för REST-flöde** — `GET/PATCH/POST /{handlaggningId}` kontrolleras automatiskt via `RegelAccessGuard` innan operationen utförs.
+
