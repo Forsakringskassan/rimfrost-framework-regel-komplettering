@@ -21,10 +21,12 @@ import se.fk.rimfrost.framework.handlaggning.model.HandlaggningUpdate;
 import se.fk.rimfrost.framework.regel.integration.config.RegelConfigProvider;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringDoneHandler;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringService;
+import se.fk.rimfrost.framework.regel.komplettering.logic.dto.Anvandare;
 import se.fk.rimfrost.framework.regel.komplettering.logic.dto.Informationsaccess;
 import se.fk.rimfrost.framework.regel.komplettering.logic.dto.RegelKompletteringReadResponse;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.CorrelationDataReadException;
 import se.fk.rimfrost.framework.regel.komplettering.presentation.rest.guard.RegelAccessGuard;
+import se.fk.rimfrost.framework.regel.komplettering.presentation.rest.identity.UserIdentityHolder;
 import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.RegelOulControllerApi;
 import se.fk.rimfrost.framework.regel.oul.jaxrsspec.controllers.generatedsource.model.GetUtokadUppgiftsbeskrivningResponse;
 import se.fk.rimfrost.framework.regel.oul.logic.OulUppgiftService;
@@ -62,6 +64,9 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
 
    @Inject
    OulUppgiftService oulUppgiftService;
+
+   @Inject
+   UserIdentityHolder userIdentityHolder;
 
    /**
     * Returns the data the handläggare needs to register the sökande's svar.
@@ -189,11 +194,13 @@ public abstract class RegelKompletteringController<T> implements RegelOulControl
          LOGGER.error("Correlation data not found for handlaggningId: {}", handlaggningId);
          throw new CorrelationDataReadException("Correlation data not found");
       }
+      var identity = userIdentityHolder.getIdentity();
       var regel = regelConfigProvider.getConfig().getRegel();
       return new Informationsaccess(
             correlation.oulUppgiftId(),
             regel.getId(),
-            String.valueOf(regel.getVersion()));
+            String.valueOf(regel.getVersion()),
+            new Anvandare(identity.typId(), identity.varde()));
    }
 
    private Response.Status toHttpStatus(HandlaggningException e)

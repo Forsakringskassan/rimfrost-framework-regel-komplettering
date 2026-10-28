@@ -247,6 +247,20 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
             .body("informationsaccess.regelVersion", equalTo("1"));
    }
 
+   @Test
+   @DisplayName("FRKOMP-FR-06.5: informationsaccess.anvandare is the inloggad handläggare's identity")
+   void should_return_handlaggare_identity_in_informationsaccess_on_get() throws Exception
+   {
+      var handlaggningId = givenReadableHandlaggning();
+
+      RestAssured.given()
+            .get("/api/test/" + handlaggningId)
+            .then()
+            .statusCode(200)
+            .body("informationsaccess.anvandare.typId", equalTo(ID_TYP))
+            .body("informationsaccess.anvandare.varde", equalTo(ID_VARDE));
+   }
+
    private UUID givenReadableHandlaggning() throws Exception
    {
       var handlaggningId = UUID.randomUUID();
