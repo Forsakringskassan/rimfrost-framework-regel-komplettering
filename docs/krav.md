@@ -58,8 +58,8 @@ underliggande ramverk upprepas inte.
   fortfarande saknar uppgifter ska HTTP 422 returneras.
 - **FRKOMP-FR-04.4** Om `isKompletteringRequired()` returnerar false ska ramverket skicka svar
   med `utfall = JA` på den `replyTo` topic som lagrats för den pågående kompletteringsomgången.
-- **FRKOMP-FR-04.5** `POST /done` ska returnera HTTP 409 om korrelationstillståndet inte kan hittas, t.ex. för att timeout redan har
-  tömt korrelationstillståndet.
+- **FRKOMP-FR-04.5** `GET /{handlaggningId}`, `PATCH /{handlaggningId}` och `POST /done` ska returnera HTTP 500 om
+  korrelationstillståndet inte kan hittas, t.ex. för att timeout redan har tömt korrelationstillståndet.
 - **FRKOMP-FR-04.6** `RegelKompletteringService` ska använda en enda typparameter för
   svarsdata: samma datastruktur används både som returvärde för `readSvarData` (GET) och som
   request body för `registerSvar` (PATCH).
@@ -67,21 +67,27 @@ underliggande ramverk upprepas inte.
 - **FRKOMP-FR-04.8** 404 fel vid REST-anrop för att avsluta OUL uppgift behandlas som lyckat anrop.
 - **FRKOMP-FR-04.9** `PATCH /{handlaggningId}` ska svara med HTTP 500 om konflikt fel uppstår 
   vid uppdatering av handläggning.
+- **FRKOMP-FR-04.10** REST-anrop mot externa tjänster ska returnera HTTP 404 om tjänsten svarar
+  med `NOT_FOUND`.
+- **FRKOMP-FR-04.11** REST-anrop mot externa tjänster ska returnera HTTP 400 om tjänsten svarar
+  med `BAD_REQUEST`.
+- **FRKOMP-FR-04.12** REST-anrop mot externa tjänster ska returnera HTTP 503 om tjänsten svarar
+  med `SERVICE_UNAVAILABLE`.
+- **FRKOMP-FR-04.13** REST-anrop mot externa tjänster ska returnera HTTP 500 vid övriga fel.
 
 ### FRKOMP-FR-05 — Kontroll av skyddad identitet (SID)
 
-- **FRKOMP-FR-05.1** Innan `readSvarData()` anropas vid `GET /{handlaggningId}` ska ramverket kontrollera
-  om någon av handläggningsärendets individer har skyddad identitet via SID-tjänsten.
+- **FRKOMP-FR-05.1** Innan läsning, uppdatering och avslut av uppgift kopplad till handläggningsärende
+  så ska ramverket kontrollera om någon av handläggningsärendets individer har skyddad identitet via
+  SID-tjänsten.
 - **FRKOMP-FR-05.2** Individerna hämtas från `handlaggning.yrkande().individYrkandeRoller()` och
   skickas i en `POST /sid/status`-förfrågan till SID-tjänsten.
-- **FRKOMP-FR-05.3** Om en eller flera individer har skyddad identitet ska ramverket returnera
-  HTTP 403 och `readSvarData()` ska inte anropas.
-- **FRKOMP-FR-05.4** Fel från SID-tjänsten ska resultera i väldefinierade HTTP-statuskoder på samma
-  sätt som fel mot handläggningstjänsten: 404, 400, 503 respektive 500.
+- **FRKOMP-FR-05.3** Om en eller flera individer har skyddad identitet och handläggaren saknar
+  SID-rättigheter ska ramverket returnera HTTP 403 och den efterfrågade operationen ska inte utföras.
 - **FRKOMP-FR-05.5** SID-kontrollen ska ingå i ramverket och gälla automatiskt för alla
-  regelimplementationer utan kodändringar. Varje regelimplementation måste konfigurera `sid.api.base-url`
-  med adressen till SID-tjänsten.
-- **FRKOMP-FR-05.6** Om en eller flera individer har skyddad identitet ska ramverket ta bort tilldelningen av OUL-uppgiften
+  regelimplementationer utan kodändringar.
+- **FRKOMP-FR-05.6** Om en eller flera individer har skyddad identitet och handläggaren saknar
+  SID-rättigheter ska ramverket ta bort tilldelningen av OUL-uppgiften
   innan HTTP 403 returneras, via `tryUnassignOulUppgift` som tillhandahålls av
   `rimfrost-framework-regel-oul`, så att uppgiften återgår till otilldelat läge och kan tilldelas
   handläggare med SID-rättigheter.
@@ -91,6 +97,14 @@ underliggande ramverk upprepas inte.
   hoppas över utan fel — HTTP 403 ska ändå returneras.
 - **FRKOMP-FR-05.8** Fel vid unassign av OUL-uppgiften ska loggas men ska inte påverka det
   returnerade HTTP 403-svaret. `tryUnassignOulUppgift` hanterar loggning och sväljer felet internt.
+- **FRKOMP-FR-05.9** Om SID detekteras ska ramverket kontrollera om den inloggade handläggaren har
+  SID-rättigheter via `PermissionsAdapter.hasSidPermission()`. Handläggarens identitet (`idTyp`
+  och `idVarde`) ska hämtas via `UserIdentityHolder.getIdentity()`, som håller den identitet som sparats av
+  `UserIdentityFilter` (FRKOMP-FR-08.2).
+- **FRKOMP-FR-05.10** Om handläggaren har SID-rättigheter ska den efterfrågade operationen utföras utan begränsning.
+- **FRKOMP-FR-05.11** *(ej testbar — konfigurationskrav)* Ramverket ska läsa adressen till SID-tjänsten från property `sid.api.base-url`.
+- **FRKOMP-FR-05.12** *(ej testbar — konfigurationskrav)* Ramverket ska läsa adressen till behörighetstjänsten från property `permissions.api.base-url`.
+- **FRKOMP-FR-05.13** *(ej testbar — konfigurationskrav)* Ramverket ska läsa adressen till identity-tjänsten från property `quarkus.rest-client.identity-api.url`.
 
 ### FRKOMP-FR-06 — Informationsaccessdata i GET-svaret
 
@@ -114,6 +128,21 @@ med `uppgiftId`. Svaret bär därför den data som BFF:en inte själv har (FKPOC
 - **FRKOMP-FR-06.5** `informationsaccess.anvandare` ska vara den inloggade handläggarens
   identitet (`typId` och `varde`), som ramverket hämtar ur anropets token. Då behöver
   BFF:en inte själv tolka token.
+
+### FRKOMP-FR-07 — Utility för kontroll av access till uppgift
+
+- **FRKOMP-FR-07.1** Ramverket ska definiera en utility som kan användas vid förfrågan till
+  REST-endpoints för att kontrollera att handläggare har rätt att arbeta med en uppgift.
+  Om handläggaren inte har rätt att jobba med uppgiften så ska HTTP 403 returneras som svar.
+- **FRKOMP-FR-07.2** Kontrollen ska verifiera att handläggaren är tilldelad som ansvarig för uppgiften.
+- **FRKOMP-FR-07.3** SID kontroll enligt FRKOMP-FR-05 ska utföras som del av kontrollen för att säkerställa att handläggaren har rätt att se uppgiften.
+- **FRKOMP-FR-07.4** Kontrollen ska returnera så snabbt som möjligt. Om kontroll av tilldelning misslyckas ska inte kontroll av SID göras.
+- **FRKOMP-FR-07.5** Om handläggarens identitet saknas i UserIdentityHolder eller om UserIdentityHolder inte är tillgänglig så ska HTTP 401 returneras.
+
+### FRKOMP-FR-08 — Kontroll av identitet vid REST förfrågan
+
+- **FRKOMP-FR-08.1** Användarens identitet ska verifieras vid REST förfrågan via `IdentityAdapter.getIdentity()`. Om identity-tjänsten svarar med 401 så ska HTTP 401 returneras. Övriga fel ska hanteras enligt FRKOMP-FR-04.10 till FRKOMP-FR-04.13.
+- **FRKOMP-FR-08.2** Om användarens identitet kunde verifieras så ska den sparas till UserIdentityHolder för att enkelt kunna återanvändas utan att en ny förfrågan till identity-tjänsten ska behövas.
 
 ---
 
