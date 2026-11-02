@@ -2,6 +2,37 @@
 
 Changelog of rimfrost-framework-regel-komplettering.
 
+## 0.2.0 (2026-11-02)
+
+### Features
+
+-  returnera handläggarens identitet i informationsaccess (FKPOC-1103) ([e0d61](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/e0d61e4582a3baa) julolsso)  
+-  returnera informationsaccessdata tillsammans med regelns svar i GET-svaret (FKPOC-1103) ([aecad](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/aecad00996cc679) julolsso)  
+-  Add access control to provided uppgift endpoints ([e02c2](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/e02c21af42a882a) Lars Persson)  
+
+### Bug Fixes
+
+-  Replace github workflows ([32191](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/32191a58fff3e99) Lars Persson)  
+-  returnera HTTP 500 när korrelationsdata saknas och uppdatera kraven (FKPOC-1103) ([2050f](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/2050fa64497da70) julolsso)  
+-  Add support for uppgift regelutfall field ([7609e](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/7609ee66af4467c) Lars Persson)  
+-  Replace snapshot dependencies in pom.xml ([84e50](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/84e50df16738f7b) Lars Persson)  
+-  add SID permission check with PermissionsAdapter and IdentityAdapter ([10a40](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/10a4016f9f535e4) Ulf Slunga)  
+-  **deps**  update dependency se.fk.rimfrost.framework.regel.oul:rimfrost-framework-regel-oul-openapi-jaxrs-spec to v0.0.4 ([22982](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/229825782a2951d) renovate[bot])  
+-  **deps**  update dependency se.fk.rimfrost.framework.regel.oul:rimfrost-framework-regel-oul-openapi-jaxrs-spec to v0.0.3 ([7bd8c](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/7bd8c1b01111d20) renovate[bot])  
+-  **deps**  update dependency se.fk.rimfrost.framework.regel.oul:rimfrost-framework-regel-oul to v0.1.2 ([4a6e7](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/4a6e7cbba32d832) renovate[bot])  
+-  **deps**  update dependency se.fk.rimfrost.framework.regel:rimfrost-framework-regel to v1.4.4 ([76f0e](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/76f0ecfa82e673f) renovate[bot])  
+
+### Dependency updates
+
+- update forsakringskassan/.github digest to 625efb1 ([fc65e](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/fc65eddaeecbe5f) renovate[bot])  
+- update forsakringskassan/.github digest to cbd74f1 ([5f528](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/5f528bd1d20959e) renovate[bot])  
+- update dependency org.apache.maven.plugins:maven-compiler-plugin to v3.16.0 ([ce7b6](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/ce7b6c0977f02d1) renovate[bot])  
+- update forsakringskassan/.github digest to bfb01f7 ([b5a0c](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/b5a0c24f749173b) renovate[bot])  
+### Other changes
+
+
+## rimfrost-1_2 (2026-09-18)
+
 ## 0.1.1 (2026-09-18)
 
 ### Bug Fixes
