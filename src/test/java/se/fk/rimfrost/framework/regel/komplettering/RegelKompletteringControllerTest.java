@@ -288,6 +288,19 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
    }
 
    @Test
+   @DisplayName("GET utokadUppgiftsbeskrivning returns 200 for a verified user identity")
+   void should_return_200_on_get_utokad_uppgiftsbeskrivning() throws Exception
+   {
+      var response = RestAssured.given()
+            .get("/api/test/utokadUppgiftsbeskrivning")
+            .then()
+            .statusCode(200).extract().as(GetUtokadUppgiftsbeskrivningResponse.class);
+
+      assertEquals("TestUtokadUppgiftsbeskrivning", response.getBeskrivning());
+      verify(identityAdapter).getIdentity(any());
+   }
+
+   @Test
    @DisplayName("FRKOMP-FR-06.1: GET returns the rule's response in data together with informationsaccess")
    void should_return_rule_response_as_data_with_informationsaccess_on_get() throws Exception
    {
@@ -326,7 +339,7 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
             .then()
             .statusCode(500);
 
-      verify(regelKompletteringService, never()).readSvarData(any());
+      verify(regelKompletteringService, Mockito.never()).readSvarData(Mockito.any());
    }
 
    @Test
@@ -345,16 +358,17 @@ class RegelKompletteringControllerTest extends AbstractRegelKompletteringTestBas
    }
 
    @Test
-   @DisplayName("GET utokadUppgiftsbeskrivning returns 200 for a verified user identity")
-   void should_return_200_on_get_utokad_uppgiftsbeskrivning() throws Exception
+   @DisplayName("FRKOMP-FR-06.5: informationsaccess.anvandare is the inloggad handläggare's identity")
+   void should_return_handlaggare_identity_in_informationsaccess_on_get() throws Exception
    {
-      var response = RestAssured.given()
-            .get("/api/test/utokadUppgiftsbeskrivning")
-            .then()
-            .statusCode(200).extract().as(GetUtokadUppgiftsbeskrivningResponse.class);
+      var handlaggningId = givenReadableHandlaggning();
 
-      assertEquals("TestUtokadUppgiftsbeskrivning", response.getBeskrivning());
-      verify(identityAdapter).getIdentity(any());
+      RestAssured.given()
+            .get("/api/test/" + handlaggningId)
+            .then()
+            .statusCode(200)
+            .body("informationsaccess.anvandare.typId", equalTo(ID_TYP))
+            .body("informationsaccess.anvandare.varde", equalTo(ID_VARDE));
    }
 
    private void givenUnassignedHandlaggare() throws IdentityException
