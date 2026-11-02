@@ -2,6 +2,15 @@
 
 Changelog of rimfrost-framework-regel-komplettering.
 
+## 0.3.0 (2026-11-02)
+
+### Features
+
+-  send optional processvyUrl from regelanropet to OUL uppgift (FKPOC-1163) ([54358](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/5435823851139af) LisaWedin_Ductus)  
+
+### Other changes
+
+
 ## 0.2.0 (2026-11-02)
 
 ### Features
