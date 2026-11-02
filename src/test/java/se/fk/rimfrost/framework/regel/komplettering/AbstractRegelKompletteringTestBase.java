@@ -109,7 +109,7 @@ public abstract class AbstractRegelKompletteringTestBase extends RegelTestBase
    private void configureOulUppgiftServiceMocks() throws Exception
    {
       Mockito.when(oulUppgiftService.getCorrelationData(Mockito.any()))
-            .thenReturn(defaultOulCorrelationData());
+            .thenReturn(createDefaultOulCorrelationData());
    }
 
    /**
@@ -124,7 +124,7 @@ public abstract class AbstractRegelKompletteringTestBase extends RegelTestBase
                   .build());
    }
 
-   private se.fk.rimfrost.framework.regel.oul.logic.entity.OulCorrelationData defaultOulCorrelationData()
+   protected se.fk.rimfrost.framework.regel.oul.logic.entity.OulCorrelationData createDefaultOulCorrelationData()
    {
       var cloudEventData = ImmutableCloudEventData.builder()
             .id(UUID.randomUUID())
@@ -145,12 +145,12 @@ public abstract class AbstractRegelKompletteringTestBase extends RegelTestBase
       var uppgift = ImmutableUppgift.builder()
             .id(DEFAULT_UPPGIFT_ID)
             .version(1)
-            .skapadTs(OffsetDateTime.now())
+            .skapadTS(OffsetDateTime.now())
             .aktivitetId(UUID.randomUUID())
             .fSSAinformation("")
             .uppgiftSpecifikation(uppgiftSpecifikation)
             .uppgiftStatus(PLANERAD_STATUS)
-            .utforarId(ImmutableIdtyp.builder().typId(ID_TYP).varde(ID_VARDE).build())
+            .utforare(ImmutableIdtyp.builder().typId(ID_TYP).varde(ID_VARDE).build())
             .build();
       return ImmutableOulCorrelationData.builder()
             .oulUppgiftId(DEFAULT_UPPGIFT_ID)
