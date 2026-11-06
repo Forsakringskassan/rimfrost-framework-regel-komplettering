@@ -14,7 +14,7 @@ underliggande ramverk upprepas inte.
 
 - **FRKOMP-FR-01.1** Ramverket ska ta emot kompletteringsförfrågningar från en konfigurerad
   Kafka-topic.
-- **FRKOMP-FR-01.2** Svar ska skickas till den topic som angavs i förfrågans `replyTo`-fält.
+- **FRKOMP-FR-01.2** Svar ska skickas till regelns konfigurerade svars-topic.
 - **FRKOMP-FR-01.3** Vid utfallet "komplettering behövs inte" ska svaret ha `utfall = JA`.
 - **FRKOMP-FR-01.4** Vid utfallet "komplettering utförd av handläggare" ska svaret ha
   `utfall = JA`. Anropande flöde ska inte behöva särskilja dessa två fall.
@@ -33,7 +33,8 @@ underliggande ramverk upprepas inte.
 - **FRKOMP-FR-03.1** Vid mottagen förfrågan ska ramverket anropa `isKompletteringRequired()` på
   regelimplementationens service-bean.
 - **FRKOMP-FR-03.2** Om `isKompletteringRequired()` returnerar false ska ramverket skicka
-  svar med `utfall = JA` direkt på `replyTo` utan att skapa någon OUL-uppgift.
+  svar med `utfall = JA` direkt på regelns konfigurerade svars-topic utan att skapa någon
+  OUL-uppgift.
 - **FRKOMP-FR-03.3** Om `isKompletteringRequired()` returnerar true ska ramverket
   initiera en kompletteringsuppgift via `OulUppgiftService.createOulUppgift()` och vänta —
   inget Kafka-svar skickas i detta steg.
@@ -57,7 +58,7 @@ underliggande ramverk upprepas inte.
   ska `isKompletteringRequired()` anropas för att verifiera att yrkandet nu är komplett. Om yrkandet
   fortfarande saknar uppgifter ska HTTP 422 returneras.
 - **FRKOMP-FR-04.4** Om `isKompletteringRequired()` returnerar false ska ramverket skicka svar
-  med `utfall = JA` på den `replyTo` topic som lagrats för den pågående kompletteringsomgången.
+  med `utfall = JA` på regelns konfigurerade svars-topic.
 - **FRKOMP-FR-04.5** `GET /{handlaggningId}`, `PATCH /{handlaggningId}` och `POST /done` ska returnera HTTP 500 om
   korrelationstillståndet inte kan hittas, t.ex. för att timeout redan har tömt korrelationstillståndet.
 - **FRKOMP-FR-04.6** `RegelKompletteringService` ska använda en enda typparameter för

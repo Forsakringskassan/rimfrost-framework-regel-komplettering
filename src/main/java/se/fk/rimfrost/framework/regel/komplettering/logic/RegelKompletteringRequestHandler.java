@@ -64,7 +64,7 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
          if (!regelKompletteringService.isKompletteringRequired(handlaggning))
          {
             LOGGER.info("Komplettering not required for handlaggningId: {}. Sending early response.", request.handlaggningId());
-            sendRegelSuccessResponse(request.handlaggningId(), cloudEvent, Utfall.JA, request.replyTo());
+            sendRegelSuccessResponse(request.handlaggningId(), cloudEvent, Utfall.JA);
             return;
          }
 
@@ -73,7 +73,6 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
          var spec = ImmutableOulUppgiftSpec.builder()
                .handlaggningId(request.handlaggningId())
                .handlaggning(handlaggning)
-               .replyTo(request.replyTo())
                .cloudEventData(cloudEvent)
                .cloudEventAttributes(CloudEventAttributesMapper.toAttributes(cloudEvent))
                .regel(regelConfig.getSpecifikation().getNamn())
@@ -100,7 +99,7 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
          {
             regelErrorInformation = ex.getRegelErrorInformation();
          }
-         sendErrorResponse(request.handlaggningId(), cloudEvent, regelErrorInformation, request.replyTo());
+         sendErrorResponse(request.handlaggningId(), cloudEvent, regelErrorInformation);
       }
    }
 
@@ -136,7 +135,7 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
 
       var utfall = Utfall.JA;
 
-      sendRegelSuccessResponse(handlaggning.id(), correlation.cloudEventData(), utfall, correlation.replyTopic());
+      sendRegelSuccessResponse(handlaggning.id(), correlation.cloudEventData(), utfall);
 
       oulUppgiftService.cleanupCorrelation(handlaggning.id());
 
@@ -181,7 +180,7 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
 
    private void sendRegelSuccessResponse(UUID handlaggningId,
          CloudEventData cloudEventData,
-         Utfall utfall, String replyTopic)
+         Utfall utfall)
    {
       try
       {
@@ -199,7 +198,7 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
                .type(cloudEventData.type())
                .source(cloudEventData.source())
                .build();
-         regelKafkaProducer.sendRegelResponse(regelResponse, Objects.requireNonNull(replyTopic));
+         regelKafkaProducer.sendRegelResponse(regelResponse);
       }
       catch (IllegalStateException e)
       {
