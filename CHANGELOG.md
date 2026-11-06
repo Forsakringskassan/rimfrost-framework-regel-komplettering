@@ -2,6 +2,12 @@
 
 Changelog of rimfrost-framework-regel-komplettering.
 
+## 0.4.0 (2026-11-06)
+
+### Features
+
+-  Remove replyTo and bump dependencies ([78d86](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/78d867432a1cdd1) Lars Persson)  
+
 ## 0.3.0 (2026-11-02)
 
 ### Features
