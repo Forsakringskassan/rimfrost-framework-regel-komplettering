@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import se.fk.rimfrost.framework.handlaggning.adapter.HandlaggningAdapter;
-import se.fk.rimfrost.framework.handlaggning.exception.HandlaggningException;
 import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
 import se.fk.rimfrost.framework.handlaggning.model.HandlaggningUpdate;
 import se.fk.rimfrost.framework.handlaggning.model.Yrkande;
@@ -76,7 +75,7 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
       Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(false);
 
-      regelKafkaConnector.sendRegelRequest(handlaggningId.toString(), responseTopic);
+      regelKafkaConnector.sendRegelRequest(handlaggningId.toString());
       var response = regelKafkaConnector.waitForRegelResponse();
 
       assertEquals(Utfall.JA, response.getData().getUtfall());
@@ -98,7 +97,7 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
       var captor = ArgumentCaptor.forClass(OulUppgiftSpec.class);
       Mockito.doNothing().when(oulUppgiftService).createOulUppgift(captor.capture());
 
-      regelKafkaConnector.sendRegelRequest(handlaggningId.toString(), responseTopic);
+      regelKafkaConnector.sendRegelRequest(handlaggningId.toString());
 
       verify(handlaggningAdapter, timeout(5000)).readHandlaggning(handlaggningId);
       verify(regelKompletteringService, timeout(5000)).isKompletteringRequired(Mockito.any());
@@ -108,7 +107,6 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
       assertEquals(handlaggningId, oulUppgiftSpec.handlaggningId());
       assertNotNull(oulUppgiftSpec.aktivitetId());
       assertNotNull(oulUppgiftSpec.handlaggning());
-      assertEquals(responseTopic, oulUppgiftSpec.replyTo());
       assertNotNull(oulUppgiftSpec.cloudEventData());
       assertNotNull(oulUppgiftSpec.cloudEventAttributes());
       assertEquals("TestUppgiftNamn", oulUppgiftSpec.regel());
@@ -131,7 +129,7 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
       Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(true);
 
-      var payload = RegelTestData.newRegelRequestMessagePayload(handlaggningId.toString(), responseTopic);
+      var payload = RegelTestData.newRegelRequestMessagePayload(handlaggningId.toString());
       payload.getData().setProcessvyUrl("/process/vah");
       inMemoryConnector.source(RegelKafkaConnector.regelRequestsChannel).send(payload);
 
@@ -153,7 +151,7 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
       Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(true);
 
-      regelKafkaConnector.sendRegelRequest(handlaggningId.toString(), responseTopic);
+      regelKafkaConnector.sendRegelRequest(handlaggningId.toString());
 
       var captor = ArgumentCaptor.forClass(OulUppgiftSpec.class);
       verify(oulUppgiftService, timeout(5000)).createOulUppgift(captor.capture());
@@ -171,7 +169,7 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
 
       Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenThrow(new RuntimeException());
 
-      regelKafkaConnector.sendRegelRequest(handlaggningId.toString(), responseTopic);
+      regelKafkaConnector.sendRegelRequest(handlaggningId.toString());
       var response = regelKafkaConnector.waitForRegelResponse();
 
       assertEquals(Utfall.ERROR, response.getData().getUtfall());
@@ -191,7 +189,7 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
       Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenThrow(new RuntimeException());
 
-      regelKafkaConnector.sendRegelRequest(handlaggningId.toString(), responseTopic);
+      regelKafkaConnector.sendRegelRequest(handlaggningId.toString());
       var response = regelKafkaConnector.waitForRegelResponse();
 
       assertEquals(Utfall.ERROR, response.getData().getUtfall());
@@ -212,7 +210,7 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(true);
       Mockito.doThrow(new RuntimeException()).when(oulUppgiftService).createOulUppgift(Mockito.any());
 
-      regelKafkaConnector.sendRegelRequest(handlaggningId.toString(), responseTopic);
+      regelKafkaConnector.sendRegelRequest(handlaggningId.toString());
       var response = regelKafkaConnector.waitForRegelResponse();
 
       assertEquals(Utfall.ERROR, response.getData().getUtfall());

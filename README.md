@@ -21,7 +21,7 @@ och [rimfrost-framework-regel-oul](https://github.com/Forsakringskassan/rimfrost
 ## Ansvarsområden
 
 - **Kafka request/response** — konsumerar kompletteringsförfrågningar och skickar svar
-  dynamiskt till förfrågans `replyTo`-topic.
+  på regelns konfigurerade svars-topic.
 - **Kompletteringskontroll** — tillhandahåller `RegelKompletteringService` (metoden
   `isKompletteringRequired()` implementeras av regelimplementationer) för att kontrollera om attribut saknas.
 - **REST-flöde för komplettering** — exponerar `GET/PATCH/POST /{handlaggningId}`
