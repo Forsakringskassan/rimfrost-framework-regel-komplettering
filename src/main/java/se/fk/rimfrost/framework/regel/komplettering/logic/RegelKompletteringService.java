@@ -1,7 +1,9 @@
 package se.fk.rimfrost.framework.regel.komplettering.logic;
 
+import java.util.List;
 import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
 import se.fk.rimfrost.framework.handlaggning.model.HandlaggningUpdate;
+import se.fk.rimfrost.framework.regel.komplettering.logic.entity.Idtyp;
 
 /**
  * Service contract to be implemented by all komplettering regler.
@@ -30,6 +32,20 @@ public interface RegelKompletteringService<T>
     * @return true if komplettering is required, false otherwise
     */
    boolean isKompletteringRequired(Handlaggning handlaggning);
+
+   /**
+    * Returns the identities the framework should subscribe to at identitet-prenumeration-tjänsten.
+    * A non-empty list activates the identity subscription flow (FRKOMP-FR-02.2).
+    * The default implementation returns an empty list, meaning no subscription is created and
+    * the regel behaves as before (FRKOMP-FR-02.3).
+    *
+    * @param handlaggning the current handlaggning
+    * @return identities to subscribe to, or an empty list if no subscription is needed
+    */
+   default List<Idtyp> getPrenumerationsIdentiteter(Handlaggning handlaggning)
+   {
+      return List.of();
+   }
 
    /**
     * Returns the data the handläggare needs to register the sökande's svar.

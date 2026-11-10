@@ -25,8 +25,14 @@ underliggande ramverk upprepas inte.
 
 - **FRKOMP-FR-02.1** Ramverket ska tillhandahålla ett interface (`RegelKompletteringService`)
   med en metod `isKompletteringRequired()` som varje regelimplementation måste implementera.
-  Metoden returnerar ett boolean värde, där true indikerar att komplettering behövs och false 
+  Metoden returnerar ett boolean värde, där true indikerar att komplettering behövs och false
   att yrkandet är komplett.
+- **FRKOMP-FR-02.2** Ramverket ska utöka interfacet (`RegelKompletteringService`) med en metod
+  `getPrenumerationsIdentiteter()`, som returnerar de identiteter ramverket ska
+  prenumerera på hos identitet-prenumeration-tjänsten.
+- **FRKOMP-FR-02.3** Metoden `getPrenumerationsIdentiteter()` ska ha en default-implementation
+  som returnerar en tom lista, vilket innebär att ingen prenumeration skapas och att regelns
+  beteende är oförändrat jämfört med flödet utan identitetsprenumeration.
 
 ### FRKOMP-FR-03 — Handler-flöde
 
@@ -44,6 +50,13 @@ underliggande ramverk upprepas inte.
     relevant felkod.
 - **FRKOMP-FR-03.6** Om exception kastas vid anrop till `isKompletteringRequired()` ska ramverket skicka ett felsvar med
   felkod `RIMFROST_OTHER`.
+- **FRKOMP-FR-03.7** Om `isKompletteringRequired()` returnerar true och
+  `getPrenumerationsIdentiteter()` returnerar en icke-tom lista ska ramverket registrera en
+  prenumeration hos identitet-prenumeration-tjänsten via `POST /prenumerationer`, med
+  `prenumerationId = handlaggningId`, de returnerade identiteterna och det konfigurerade
+  `replyTo`-topic. Prenumerationen ska registreras innan OUL-uppgiften skapas.
+- **FRKOMP-FR-03.8** Om skapande av prenumeration misslyckas ska ramverket skicka ett felsvar
+  med felkod `RIMFROST_OTHER`. OUL-uppgiften ska inte skapas.
 
 ### FRKOMP-FR-04 — Kompletteringsflöde via REST
 
@@ -145,12 +158,61 @@ med `uppgiftId`. Svaret bär därför den data som BFF:en inte själv har (FKPOC
 - **FRKOMP-FR-08.1** Användarens identitet ska verifieras vid REST förfrågan via `IdentityAdapter.getIdentity()`. Om identity-tjänsten svarar med 401 så ska HTTP 401 returneras. Övriga fel ska hanteras enligt FRKOMP-FR-04.10 till FRKOMP-FR-04.13.
 - **FRKOMP-FR-08.2** Om användarens identitet kunde verifieras så ska den sparas till UserIdentityHolder för att enkelt kunna återanvändas utan att en ny förfrågan till identity-tjänsten ska behövas.
 
-### FRKOMP-FR-07 — Skicka processvy-länk till OUL
+### FRKOMP-FR-09 — Skicka processvy-länk till OUL
 
-- **FRKOMP-FR-07.1** När ramverket bygger `OulUppgiftSpec` ska regelanropets `processvyUrl` skickas
+- **FRKOMP-FR-09.1** När ramverket bygger `OulUppgiftSpec` ska regelanropets `processvyUrl` skickas
   med, på samma sätt som `aktivitetId` redan skickas med.
-- **FRKOMP-FR-07.2** `processvyUrl` är valfri. Ett regelanrop utan `processvyUrl` skapar en
+- **FRKOMP-FR-09.2** `processvyUrl` är valfri. Ett regelanrop utan `processvyUrl` skapar en
   OUL-uppgift som vanligt, men utan processvy.
+
+### FRKOMP-FR-10 — Identitetsprenumeration
+
+Ramverket ska hantera livscykeln för prenumerationer hos identitet-prenumeration-tjänsten.
+En prenumeration används för att ta emot notifikationer när identitetsdata för yrkandets
+individer förändras av en extern källa, så att kompletteringen kan avslutas automatiskt
+utan handläggaråtgärd. Flödet aktiveras endast om regelns implementation av
+`getPrenumerationsIdentiteter()` (FRKOMP-FR-02.2) returnerar en icke-tom lista.
+
+- **FRKOMP-FR-10.1** Ramverket ska avregistrera prenumerationen via
+  `DELETE /prenumerationer/{prenumerationId}` när kompletteringen är klar — oavsett om
+  detta sker via händelsestyrd väg (FRKOMP-FR-11) eller via REST-flödet (FRKOMP-FR-04).
+  `prenumerationId` är lika med `handlaggningId`.
+- **FRKOMP-FR-10.2** 404-svar vid avregistrering av prenumeration ska behandlas som lyckat
+  anrop — prenumerationen kan redan ha avregistrerats.
+- **FRKOMP-FR-10.3** Fel vid avregistrering av prenumeration ska loggas men ska inte avbryta
+  det övriga flödet och ska inte påverka utsänt Kafka-svar.
+- **FRKOMP-FR-10.4** *(ej testbar — konfigurationskrav)* Ramverket ska läsa adressen till
+  identitet-prenumeration-tjänsten från property `identitetprenumeration.api.base-url`.
+- **FRKOMP-FR-10.5** *(ej testbar — konfigurationskrav)* Ramverket ska läsa det `replyTo`-topic
+  dit identitet-prenumeration-tjänsten ska publicera `IdentitetUppdateradEvent` från property
+  `identitetprenumeration.reply-to-topic`. Samma topic konfigureras som inkommande Kafka-kanal
+  för mottagning av dessa event (FRKOMP-FR-11).
+
+### FRKOMP-FR-11 — Mottagning av IdentitetUppdateradEvent
+
+Ramverket ska kunna ta emot `IdentitetUppdateradEvent` och, om yrkandet nu är komplett,
+avsluta kompletteringen utan handläggaråtgärd. Eventet publiceras av
+identitet-prenumeration-tjänsten till det `replyTo`-topic som angavs vid prenumerationsskapandet
+(FRKOMP-FR-03.7). Eventet innehåller inget uppdaterat identitetsdata — ramverket hämtar
+aktuell handläggning för att avgöra om kompletteringen är klar.
+
+- **FRKOMP-FR-11.1** Ramverket ska ta emot `IdentitetUppdateradEvent` från konfigurerad
+  Kafka-topic. `prenumerationId` i eventet används som `handlaggningId` för att hämta
+  handläggning.
+- **FRKOMP-FR-11.2** Vid mottaget event ska ramverket hämta aktuell handläggning och anropa
+  `isKompletteringRequired()`.
+- **FRKOMP-FR-11.3** Om `isKompletteringRequired()` returnerar false ska ramverket avsluta
+  OUL-uppgiften, avregistrera prenumerationen, uppdatera handläggningen och skicka svar med
+  `utfall = JA` på regelns konfigurerade svars-topic.
+- **FRKOMP-FR-11.4** Om `isKompletteringRequired()` returnerar true (kompletteringen är
+  fortfarande ofullständig) ska eventet ignoreras utan att något svar skickas. Kompletteringen
+  fortsätter och ytterligare event kan komma.
+- **FRKOMP-FR-11.5** Fel vid bearbetning av `IdentitetUppdateradEvent` ska loggas. Inget
+  felsvar skickas på Kafka — eventuell återhämtning sker via handläggare som använder
+  REST-flödet.
+- **FRKOMP-FR-11.6** *(ej testbar — konfigurationskrav)* Ramverket ska prenumerera på
+  `IdentitetUppdateradEvent` från den topic som konfigureras i property
+  `identitetprenumeration.reply-to-topic` (samma property som FRKOMP-FR-10.5).
 
 ---
 
@@ -162,6 +224,9 @@ med `uppgiftId`. Svaret bär därför den data som BFF:en inte själv har (FKPOC
   varje mottagen kompletteringsförfrågan — antingen med `utfall = JA` eller med felinformation.
 - **FRKOMP-NFR-01.2** Om komplettering initieras ska svaret skickas när kompletteringen är
   avslutad eller när timeout löpt ut — inte direkt vid mottagandet av förfrågan.
+- **FRKOMP-NFR-01.3** Om en identitetsprenumeration är aktiv när kompletteringen avslutas via
+  REST-flödet (FRKOMP-FR-04), ska prenumerationen avregistreras som del av samma flöde så att
+  inga kvarvarande event kan trigga ett dubbelt svar.
 
 ### FRKOMP-NFR-02 — Observerbarhet
 

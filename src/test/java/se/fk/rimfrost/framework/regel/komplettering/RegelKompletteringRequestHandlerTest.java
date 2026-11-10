@@ -17,20 +17,23 @@ import se.fk.rimfrost.framework.regel.Utfall;
 import se.fk.rimfrost.framework.regel.error.RegelFelkod;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringRequestHandler;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringService;
+import se.fk.rimfrost.framework.identitetprenumeration.exception.IdentitetPrenumerationException;
+import se.fk.rimfrost.framework.regel.komplettering.logic.entity.ImmutableIdtyp;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.CorrelationDataReadException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.EndOulUppgiftException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.KompletteringIncompleteException;
 import se.fk.rimfrost.framework.regel.oul.logic.entity.OulUppgiftSpec;
 import se.fk.rimfrost.framework.regel.oul.logic.exception.OulServiceException;
-
 import java.time.OffsetDateTime;
 import java.util.UUID;
-
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -220,6 +223,68 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
    }
 
    @Test
+   @DisplayName("FRKOMP-FR-03.7: createPrenumeration is called when getPrenumerationsIdentiteter returns non-empty list")
+   void should_register_prenumeration_when_identiteter_non_empty() throws Exception
+   {
+      var handlaggningId = UUID.randomUUID();
+      var handlaggning = createHandlaggning();
+      var identitet = ImmutableIdtyp.builder().typId("PERSONNR").varde("19901010-1234").build();
+
+      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
+      Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(true);
+      Mockito.when(regelKompletteringService.getPrenumerationsIdentiteter(Mockito.any())).thenReturn(List.of(identitet));
+
+      regelKafkaConnector.sendRegelRequest(handlaggningId.toString());
+
+      verify(identitetPrenumerationAdapter, timeout(5000)).createPrenumeration(Mockito.any());
+      verify(oulUppgiftService, timeout(5000)).createOulUppgift(Mockito.any());
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-03.7: prenumeration is registered before OUL uppgift is created")
+   void should_register_prenumeration_before_creating_oul_uppgift() throws Exception
+   {
+      var handlaggningId = UUID.randomUUID();
+      var handlaggning = createHandlaggning();
+      var identitet = ImmutableIdtyp.builder().typId("PERSONNR").varde("19901010-1234").build();
+
+      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
+      Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(true);
+      Mockito.when(regelKompletteringService.getPrenumerationsIdentiteter(Mockito.any())).thenReturn(List.of(identitet));
+
+      regelKafkaConnector.sendRegelRequest(handlaggningId.toString());
+
+      verify(oulUppgiftService, timeout(5000)).createOulUppgift(Mockito.any());
+      var order = inOrder(identitetPrenumerationAdapter, oulUppgiftService);
+      order.verify(identitetPrenumerationAdapter).createPrenumeration(Mockito.any());
+      order.verify(oulUppgiftService).createOulUppgift(Mockito.any());
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-03.8: error response sent and OUL not created when createPrenumeration fails")
+   void should_send_error_response_and_skip_oul_when_prenumeration_creation_fails() throws Exception
+   {
+      var handlaggningId = UUID.randomUUID();
+      var handlaggning = createHandlaggning();
+      var identitet = ImmutableIdtyp.builder().typId("PERSONNR").varde("19901010-1234").build();
+
+      Mockito.when(handlaggningAdapter.readHandlaggning(handlaggningId)).thenReturn(handlaggning);
+      Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(true);
+      Mockito.when(regelKompletteringService.getPrenumerationsIdentiteter(Mockito.any())).thenReturn(List.of(identitet));
+      Mockito
+            .doThrow(new IdentitetPrenumerationException(IdentitetPrenumerationException.ErrorType.SERVICE_UNAVAILABLE,
+                  "unavailable"))
+            .when(identitetPrenumerationAdapter).createPrenumeration(Mockito.any());
+
+      regelKafkaConnector.sendRegelRequest(handlaggningId.toString());
+      var response = regelKafkaConnector.waitForRegelResponse();
+
+      assertEquals(Utfall.ERROR, response.getData().getUtfall());
+      assertEquals(RegelFelkod.RIMFROST_OTHER, response.getData().getError().getFelkod());
+      verify(oulUppgiftService, never()).createOulUppgift(Mockito.any());
+   }
+
+   @Test
    @DisplayName("FRKOMP-FR-01.4, FRKOMP-FR-04.4: Kafka response with Utfall=JA is sent on successful komplettering")
    void should_send_success_response_on_successful_done_handling() throws Exception
    {
@@ -315,6 +380,53 @@ class RegelKompletteringRequestHandlerTest extends AbstractRegelKompletteringTes
       Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(false);
       Mockito.doThrow(new OulServiceException(OulServiceException.ErrorType.NOT_FOUND, "")).when(oulUppgiftService)
             .endOulUppgift(eq(DEFAULT_UPPGIFT_ID), Mockito.any());
+
+      regelKompletteringRequestHandler.handleKompletteringDone(handlaggning);
+
+      var response = regelKafkaConnector.waitForRegelResponse();
+      assertEquals(Utfall.JA, response.getData().getUtfall());
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-10.1, FRKOMP-NFR-01.3: deletePrenumeration is called with handlaggningId on successful done")
+   void should_delete_prenumeration_on_successful_done_handling() throws Exception
+   {
+      var handlaggning = createHandlaggning();
+      var handlaggningId = handlaggning.id();
+
+      Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(false);
+
+      regelKompletteringRequestHandler.handleKompletteringDone(handlaggning);
+
+      verify(identitetPrenumerationAdapter).deletePrenumeration(handlaggningId);
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-10.2: NOT_FOUND from deletePrenumeration is treated as success")
+   void should_not_fail_on_not_found_when_deleting_prenumeration() throws Exception
+   {
+      var handlaggning = createHandlaggning();
+
+      Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(false);
+      Mockito.doThrow(new IdentitetPrenumerationException(IdentitetPrenumerationException.ErrorType.NOT_FOUND, "not found"))
+            .when(identitetPrenumerationAdapter).deletePrenumeration(Mockito.any());
+
+      regelKompletteringRequestHandler.handleKompletteringDone(handlaggning);
+
+      var response = regelKafkaConnector.waitForRegelResponse();
+      assertEquals(Utfall.JA, response.getData().getUtfall());
+   }
+
+   @Test
+   @DisplayName("FRKOMP-FR-10.3: errors from deletePrenumeration are logged but do not interrupt the flow")
+   void should_not_fail_on_error_when_deleting_prenumeration() throws Exception
+   {
+      var handlaggning = createHandlaggning();
+
+      Mockito.when(regelKompletteringService.isKompletteringRequired(Mockito.any())).thenReturn(false);
+      Mockito.doThrow(
+            new IdentitetPrenumerationException(IdentitetPrenumerationException.ErrorType.SERVICE_UNAVAILABLE, "unavailable"))
+            .when(identitetPrenumerationAdapter).deletePrenumeration(Mockito.any());
 
       regelKompletteringRequestHandler.handleKompletteringDone(handlaggning);
 

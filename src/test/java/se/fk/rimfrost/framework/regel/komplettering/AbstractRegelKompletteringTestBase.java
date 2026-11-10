@@ -5,6 +5,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 import se.fk.rimfrost.adapter.identity.adapter.IdentityAdapter;
+import se.fk.rimfrost.framework.identitetprenumeration.adapter.IdentitetPrenumerationAdapter;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableIdtyp;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableUppgift;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableUppgiftSpecifikation;
@@ -12,7 +13,6 @@ import se.fk.rimfrost.framework.regel.RegelTestBase;
 import se.fk.rimfrost.framework.regel.logic.entity.ImmutableCloudEventData;
 import se.fk.rimfrost.framework.regel.oul.logic.OulUppgiftService;
 import se.fk.rimfrost.framework.regel.oul.logic.entity.ImmutableOulCorrelationData;
-
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -70,6 +70,9 @@ public abstract class AbstractRegelKompletteringTestBase extends RegelTestBase
 
    @InjectMock
    protected IdentityAdapter identityAdapter;
+
+   @InjectMock
+   protected IdentitetPrenumerationAdapter identitetPrenumerationAdapter;
 
    /**
     * Resets external system state and reconfigures default stubs before each test.
