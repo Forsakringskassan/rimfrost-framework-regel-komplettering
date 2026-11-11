@@ -17,6 +17,7 @@ och [rimfrost-framework-regel-oul](https://github.com/Forsakringskassan/rimfrost
 | Regelimplementationer             | Överskriver implementerar `RegelKompletteringService` och överskriver `isKompletteringRequired()`, `readSvarData()` och `registerSvar()` |
 | Handläggarportalen                | Anropar REST-gränssnittet för att läsa, uppdatera och markera komplettering som klar                                                     |
 | OUL (Operativt Uppgiftslager)     | Tar emot kompletteringsuppgiften och publicerar statusnotifieringar                                                                      |
+| Identitet-prenumeration-tjänsten  | Tar emot prenumerationer och publicerar `IdentitetUppdateradEvent` när identitetsdata förändras                                          |
 
 ## Ansvarsområden
 
@@ -29,4 +30,6 @@ och [rimfrost-framework-regel-oul](https://github.com/Forsakringskassan/rimfrost
 - **Automatisk kontroll av identitet vid REST fråga** — kontrollerar att det identitets-token som inkluderas med `Authorization`-headern är giltigt och sparar läst identitet i `UserIdentityHolder`.
 - **Guard util för access kontroll** — tillhandahåller en guard util klass `RegelAccessGuard` för kontroll att användare är tilldelad till uppgift samt att de har de rättigheter som behövs ifall uppgiften innehåller skyddade identiteter.
 - **Automatisk access kontroll för REST-flöde** — `GET/PATCH/POST /{handlaggningId}` kontrolleras automatiskt via `RegelAccessGuard` innan operationen utförs.
+- **Identitetsprenumeration** — registrerar och avregistrerar prenumerationer hos identitet-prenumeration-tjänsten om regelimplementationen returnerar identiteter via `getPrenumerationsIdentiteter()`.
+- **Automatisk avslutning vid identitetsändring** — konsumerar `IdentitetUppdateradEvent` och avslutar kompletteringen automatiskt om yrkandekontrollen godkänns.
 
