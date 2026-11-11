@@ -2,6 +2,21 @@
 
 Changelog of rimfrost-framework-regel-komplettering.
 
+## 0.4.1 (2026-11-11)
+
+### Bug Fixes
+
+-  Remove review-findings docs and document identitetsprenumeration and IdentitetUppdateradEvent in README ([a0f13](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/a0f139eec489602) Ulf Slunga)  
+-  Use handlaggning.model.Idtyp in RegelKompletteringService ([e0550](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/e05503aed529086) Ulf Slunga)  
+-  Pin identitet-prenumeration-adapter to stable 0.0.1 ([21f5a](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/21f5a2c174b6f5f) Ulf Slunga)  
+-  Add identity subscription support via identitet-prenumeration ([1c610](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/1c6109f18fe387f) Ulf Slunga)  
+-  **deps**  update dependency se.fk.rimfrost.framework.regel.oul:rimfrost-framework-regel-oul to v0.3.1 ([fc848](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/fc8482dbde52d15) renovate[bot])  
+-  Handle kafka send faults after rimfrost-framework-regel 1.6.1 change ([e4bad](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/e4bad40b8ee28db) Lars Persson)  
+
+### Dependency updates
+
+- update dependency se.fk.rimfrost.framework.regel:rimfrost-framework-regel to v1.6.1 ([ec57a](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/ec57ab5d6381e0c) renovate[bot])  
+- update forsakringskassan/.github digest to cbc0db8 ([6240e](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/6240ec3fe4757c3) renovate[bot])  
 ## 0.4.0 (2026-11-06)
 
 ### Features
