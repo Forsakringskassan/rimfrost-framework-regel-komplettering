@@ -18,7 +18,7 @@ import se.fk.rimfrost.framework.regel.error.RegelFelkod;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringRequestHandler;
 import se.fk.rimfrost.framework.regel.komplettering.logic.RegelKompletteringService;
 import se.fk.rimfrost.framework.identitetprenumeration.exception.IdentitetPrenumerationException;
-import se.fk.rimfrost.framework.regel.komplettering.logic.entity.ImmutableIdtyp;
+import se.fk.rimfrost.framework.handlaggning.model.ImmutableIdtyp;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.CorrelationDataReadException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.EndOulUppgiftException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.KompletteringIncompleteException;

@@ -3,7 +3,7 @@ package se.fk.rimfrost.framework.regel.komplettering.logic;
 import java.util.List;
 import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
 import se.fk.rimfrost.framework.handlaggning.model.HandlaggningUpdate;
-import se.fk.rimfrost.framework.regel.komplettering.logic.entity.Idtyp;
+import se.fk.rimfrost.framework.handlaggning.model.Idtyp;
 
 /**
  * Service contract to be implemented by all komplettering regler.
