@@ -66,6 +66,16 @@
       <version>0.0.1</version>
     </dependency>
     <dependency>
+      <groupId>se.fk.rimfrost.framework.identitetprenumeration</groupId>
+      <artifactId>rimfrost-framework-identitet-prenumeration-adapter</artifactId>
+      <version>0.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>se.fk.rimfrost.identitet.uppdaterad</groupId>
+      <artifactId>rimfrost-identitet-uppdaterad-asyncapi</artifactId>
+      <version>0.0.4</version>
+    </dependency>
+    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit-mockito</artifactId>
       <scope>test</scope>

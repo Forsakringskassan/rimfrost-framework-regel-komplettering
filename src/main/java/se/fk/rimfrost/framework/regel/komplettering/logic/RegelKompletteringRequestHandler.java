@@ -2,6 +2,7 @@ package se.fk.rimfrost.framework.regel.komplettering.logic;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.fk.rimfrost.framework.handlaggning.exception.HandlaggningException;
@@ -9,6 +10,10 @@ import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableHandlaggningUpdate;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableRegelutfall;
 import se.fk.rimfrost.framework.handlaggning.model.ImmutableUppgift;
+import se.fk.rimfrost.framework.identitetprenumeration.adapter.IdentitetPrenumerationAdapter;
+import se.fk.rimfrost.framework.identitetprenumeration.exception.IdentitetPrenumerationException;
+import se.fk.rimfrost.framework.identitetprenumeration.model.ImmutableCreatePrenumerationRequest;
+import se.fk.rimfrost.framework.identitetprenumeration.model.ImmutableIdtyp;
 import se.fk.rimfrost.framework.referensdata.ErbjudandeReferensdataInterface;
 import se.fk.rimfrost.framework.regel.RegelErrorInformation;
 import se.fk.rimfrost.framework.regel.Utfall;
@@ -16,8 +21,8 @@ import se.fk.rimfrost.framework.regel.error.RegelFelkod;
 import se.fk.rimfrost.framework.regel.integration.kafka.RegelResponseException;
 import se.fk.rimfrost.framework.regel.integration.kafka.dto.ImmutableRegelResponse;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.CorrelationDataReadException;
-import se.fk.rimfrost.framework.regel.komplettering.logic.exception.KompletteringIncompleteException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.EndOulUppgiftException;
+import se.fk.rimfrost.framework.regel.komplettering.logic.exception.KompletteringIncompleteException;
 import se.fk.rimfrost.framework.regel.logic.RegelCancelledException;
 import se.fk.rimfrost.framework.regel.logic.RegelRequestHandlerBase;
 import se.fk.rimfrost.framework.regel.logic.dto.RegelDataRequest;
@@ -30,9 +35,8 @@ import se.fk.rimfrost.framework.regel.oul.logic.entity.ImmutableOulUppgiftSpec;
 import se.fk.rimfrost.framework.regel.oul.logic.entity.OulCorrelationData;
 import se.fk.rimfrost.framework.regel.oul.logic.exception.OulServiceException;
 import se.fk.rimfrost.framework.regel.presentation.kafka.RegelRequestHandlerInterface;
-
 import java.time.OffsetDateTime;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -52,6 +56,12 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
    @Inject
    RegelKompletteringService<?> regelKompletteringService;
 
+   @Inject
+   IdentitetPrenumerationAdapter identitetPrenumerationAdapter;
+
+   @ConfigProperty(name = "identitetprenumeration.reply-to-topic")
+   Optional<String> identitetPrenumerationReplyToTopic;
+
    @Override
    public void handleRegelRequest(RegelDataRequest request)
    {
@@ -70,6 +80,8 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
          }
 
          LOGGER.info("Komplettering required for handlaggningId: {}. Creating uppgift.", request.handlaggningId());
+
+         createPrenumerationIfRequired(handlaggning);
 
          var spec = ImmutableOulUppgiftSpec.builder()
                .handlaggningId(request.handlaggningId())
@@ -138,6 +150,8 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
 
       sendRegelSuccessResponse(handlaggning.id(), correlation.cloudEventData(), utfall);
 
+      deletePrenumeration(handlaggning.id());
+
       oulUppgiftService.cleanupCorrelation(handlaggning.id());
 
       var uppgift = correlation.uppgift();
@@ -176,6 +190,58 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
          LOGGER.error(
                "Error in handleKompletteringDone() while updating handlaggning for id: {} — RegelResponse already sent, ignoring failure",
                handlaggning.id(), e);
+      }
+   }
+
+   /**
+    * Registers a prenumeration if the regel returns a non-empty list of identities (FRKOMP-FR-03.7).
+    * Throws if registration fails, causing the caller to send an error response instead of creating
+    * the OUL uppgift (FRKOMP-FR-03.8).
+    */
+   private void createPrenumerationIfRequired(Handlaggning handlaggning)
+         throws IdentitetPrenumerationException
+   {
+      var identiteter = regelKompletteringService.getPrenumerationsIdentiteter(handlaggning);
+      if (identiteter.isEmpty())
+      {
+         return;
+      }
+      var replyTo = identitetPrenumerationReplyToTopic.orElseThrow(
+            () -> new IllegalStateException("identitetprenumeration.reply-to-topic is not configured"));
+      var adapterIdentiteter = identiteter.stream()
+            .map(id -> ImmutableIdtyp.builder().typId(id.typId()).varde(id.varde()).build())
+            .toList();
+      var prenumerationRequest = ImmutableCreatePrenumerationRequest.builder()
+            .prenumerationId(handlaggning.id())
+            .identiteter(adapterIdentiteter)
+            .replyTo(replyTo)
+            .build();
+      identitetPrenumerationAdapter.createPrenumeration(prenumerationRequest);
+      LOGGER.info("Prenumeration registered for handlaggningId: {}", handlaggning.id());
+   }
+
+   /**
+    * Deregisters the prenumeration for the given handlaggningId (FRKOMP-FR-10.1).
+    * NOT_FOUND is treated as success (FRKOMP-FR-10.2).
+    * Other errors are logged but do not interrupt the flow (FRKOMP-FR-10.3).
+    */
+   private void deletePrenumeration(UUID handlaggningId)
+   {
+      try
+      {
+         identitetPrenumerationAdapter.deletePrenumeration(handlaggningId);
+         LOGGER.info("Prenumeration deregistered for handlaggningId: {}", handlaggningId);
+      }
+      catch (IdentitetPrenumerationException e)
+      {
+         if (e.getErrorType() == IdentitetPrenumerationException.ErrorType.NOT_FOUND)
+         {
+            LOGGER.info("Prenumeration not found for handlaggningId: {}, treating as already deregistered", handlaggningId);
+         }
+         else
+         {
+            LOGGER.error("Failed to deregister prenumeration for handlaggningId: {}", handlaggningId, e);
+         }
       }
    }
 
