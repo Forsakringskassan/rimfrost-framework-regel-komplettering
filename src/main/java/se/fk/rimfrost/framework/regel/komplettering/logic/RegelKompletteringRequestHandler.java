@@ -13,6 +13,7 @@ import se.fk.rimfrost.framework.referensdata.ErbjudandeReferensdataInterface;
 import se.fk.rimfrost.framework.regel.RegelErrorInformation;
 import se.fk.rimfrost.framework.regel.Utfall;
 import se.fk.rimfrost.framework.regel.error.RegelFelkod;
+import se.fk.rimfrost.framework.regel.integration.kafka.RegelResponseException;
 import se.fk.rimfrost.framework.regel.integration.kafka.dto.ImmutableRegelResponse;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.CorrelationDataReadException;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.KompletteringIncompleteException;
@@ -99,7 +100,7 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
          {
             regelErrorInformation = ex.getRegelErrorInformation();
          }
-         sendErrorResponse(request.handlaggningId(), cloudEvent, regelErrorInformation);
+         trySendErrorResponse(request.handlaggningId(), cloudEvent, regelErrorInformation);
       }
    }
 
@@ -200,7 +201,7 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
                .build();
          regelKafkaProducer.sendRegelResponse(regelResponse);
       }
-      catch (IllegalStateException e)
+      catch (RegelResponseException e)
       {
          LOGGER.error("Failed to send regel response for handlaggning. handlaggningId: {}, utfall: {}",
                handlaggningId, utfall, e);
@@ -221,5 +222,18 @@ public class RegelKompletteringRequestHandler extends RegelRequestHandlerBase
             .id(id)
             .namn(namn)
             .build();
+   }
+
+   private void trySendErrorResponse(UUID handlaggningId, CloudEventData cloudEventData,
+         RegelErrorInformation regelErrorInformation)
+   {
+      try
+      {
+         sendErrorResponse(handlaggningId, cloudEventData, regelErrorInformation);
+      }
+      catch (Exception e)
+      {
+         LOGGER.error("Failed to send error response for handlaggning id: {}", handlaggningId, e);
+      }
    }
 }
