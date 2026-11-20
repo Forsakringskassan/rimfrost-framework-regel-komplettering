@@ -2,6 +2,12 @@
 
 Changelog of rimfrost-framework-regel-komplettering.
 
+## 0.4.3 (2026-11-20)
+
+### Bug Fixes
+
+-  update pom ([83f37](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/83f37b05fec9589) Nils Elveros)  
+
 ## 0.4.2 (2026-11-19)
 
 ### Bug Fixes
