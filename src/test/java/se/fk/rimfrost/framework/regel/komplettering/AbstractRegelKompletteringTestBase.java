@@ -14,6 +14,7 @@ import se.fk.rimfrost.framework.regel.logic.entity.ImmutableCloudEventData;
 import se.fk.rimfrost.framework.regel.oul.logic.OulUppgiftService;
 import se.fk.rimfrost.framework.regel.oul.logic.entity.ImmutableOulCorrelationData;
 import java.time.OffsetDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -38,6 +39,8 @@ import java.util.UUID;
  *   <li>{@code createOulUppgift(any())} — returns a pre-built {@code OperativUppgift}</li>
  *   <li>{@code getCorrelationData(any())} — returns a pre-built {@code OulCorrelationData}
  *       with an uppgift assigned to {@code ID_TYP}/{@code ID_VARDE}</li>
+ *   <li>{@code getOulUppgiftUtforare(any())} — returns {@code ID_TYP}/{@code ID_VARDE} as the OUL
+ *       uppgift's utförare</li>
  *   <li>{@code IdentityAdapter.getIdentity(any())} — returns {@code ID_TYP}/{@code ID_VARDE}</li>
  *   <li>{@code endOulUppgift} and {@code cleanupCorrelation} — Mockito void defaults (do nothing)</li>
  * </ul>
@@ -112,11 +115,14 @@ public abstract class AbstractRegelKompletteringTestBase extends RegelTestBase
    {
       Mockito.when(oulUppgiftService.getCorrelationData(Mockito.any()))
             .thenReturn(createDefaultOulCorrelationData());
+      Mockito.when(oulUppgiftService.getOulUppgiftUtforare(Mockito.any()))
+            .thenReturn(Optional.of(se.fk.rimfrost.framework.regel.oul.logic.entity.ImmutableIdtyp.builder()
+                  .typId(ID_TYP).varde(ID_VARDE).build()));
    }
 
    /**
     * Configures {@link IdentityAdapter} to resolve the handläggare that the default
-    * correlation data's uppgift is assigned to, so REST requests pass {@code UserIdentityFilter}
+    * OUL uppgift utförare is assigned to, so REST requests pass {@code UserIdentityFilter}
     * and {@code RegelAccessGuard} by default.
     */
    private void configureIdentityAdapterMocks() throws Exception

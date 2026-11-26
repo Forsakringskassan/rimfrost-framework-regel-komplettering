@@ -5,29 +5,35 @@ import io.quarkus.test.InjectMock;
 import io.quarkus.test.component.QuarkusComponentTest;
 import io.quarkus.test.component.SkipInject;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.Response;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import se.fk.rimfrost.adapter.permissions.adapter.PermissionsAdapter;
 import se.fk.rimfrost.framework.handlaggning.model.Handlaggning;
 import se.fk.rimfrost.framework.handlaggning.model.RollIYrkande;
-import se.fk.rimfrost.framework.handlaggning.model.Uppgift;
 import se.fk.rimfrost.framework.handlaggning.model.Yrkande;
 import se.fk.rimfrost.framework.regel.komplettering.logic.entity.ImmutableIdtyp;
 import se.fk.rimfrost.framework.regel.komplettering.logic.exception.CorrelationDataReadException;
 import se.fk.rimfrost.framework.regel.komplettering.presentation.rest.exception.AccessDeniedException;
+import se.fk.rimfrost.framework.regel.komplettering.presentation.rest.exception.ExternalServiceErrorException;
 import se.fk.rimfrost.framework.regel.komplettering.presentation.rest.exception.UnauthorizedException;
 import se.fk.rimfrost.framework.regel.komplettering.presentation.rest.guard.RegelAccessGuard;
 import se.fk.rimfrost.framework.regel.komplettering.presentation.rest.identity.UserIdentityHolder;
 import se.fk.rimfrost.framework.regel.oul.logic.OulUppgiftService;
 import se.fk.rimfrost.framework.regel.oul.logic.entity.OulCorrelationData;
+import se.fk.rimfrost.framework.regel.oul.logic.exception.OulServiceException;
 import se.fk.rimfrost.framework.sid.adapter.SidAdapter;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -110,13 +116,12 @@ class RegelKompletteringAccessGuardTest
 
    @Test
    @DisplayName("FRKOMP-FR-07.1/07.2: AccessDeniedException kastas när uppgiften inte är tilldelad någon handläggare")
-   void verifyAccess_should_throw_access_denied_when_utforare_is_null()
+   void verifyAccess_should_throw_access_denied_when_utforare_is_empty() throws Exception
    {
       var handlaggning = createHandlaggning(List.of());
       givenHandlaggareIdentity(ID_TYP, ID_VARDE);
-      var uppgift = mock(Uppgift.class);
-      when(uppgift.utforare()).thenReturn(null);
-      givenCorrelationData(uppgift);
+      var oulUppgiftId = givenCorrelationData();
+      when(oulUppgiftService.getOulUppgiftUtforare(oulUppgiftId)).thenReturn(Optional.empty());
 
       var ex = assertThrows(AccessDeniedException.class, () -> guard.verifyAccess(handlaggning));
 
@@ -135,7 +140,7 @@ class RegelKompletteringAccessGuardTest
    {
       var handlaggning = createHandlaggning(List.of());
       givenHandlaggareIdentity(ID_TYP, ID_VARDE);
-      givenCorrelationData(createTilldeladUppgift(utforarTypId, utforarVarde));
+      givenOulUppgiftUtforare(givenCorrelationData(), utforarTypId, utforarVarde);
 
       var ex = assertThrows(AccessDeniedException.class, () -> guard.verifyAccess(handlaggning));
 
@@ -151,13 +156,31 @@ class RegelKompletteringAccessGuardTest
             createRollIYrkande("PERSONNR", "19800101-1111"),
             createRollIYrkande("SAMORDNINGSNR", "19800161-2222")));
       givenHandlaggareIdentity(ID_TYP, ID_VARDE);
-      givenCorrelationData(createTilldeladUppgift(ID_TYP, ID_VARDE));
+      givenOulUppgiftUtforare(givenCorrelationData(), ID_TYP, ID_VARDE);
 
       guard.verifyAccess(handlaggning);
 
       verify(sidAdapter).containsSid(List.of(
             sidIdtyp("PERSONNR", "19800101-1111"),
             sidIdtyp("SAMORDNINGSNR", "19800161-2222")));
+   }
+
+   @ParameterizedTest
+   @EnumSource(OulServiceException.ErrorType.class)
+   @DisplayName("FRKOMP-FR-04.10-13: Fel från OUL-tjänsten vid hämtning av utförare mappas till väldefinierade HTTP-statuskoder")
+   void verifyAccess_should_throw_with_mapped_status_when_oul_throws(@SkipInject OulServiceException.ErrorType errorType)
+         throws Exception
+   {
+      var handlaggning = createHandlaggning(List.of());
+      givenHandlaggareIdentity(ID_TYP, ID_VARDE);
+      var oulUppgiftId = givenCorrelationData();
+      var cause = new OulServiceException(errorType, "oul error");
+      when(oulUppgiftService.getOulUppgiftUtforare(oulUppgiftId)).thenThrow(cause);
+
+      var ex = assertThrows(ExternalServiceErrorException.class, () -> guard.verifyAccess(handlaggning));
+
+      assertEquals(expectedStatus(errorType), ex.getStatus());
+      assertSame(cause, ex.getCause());
    }
 
    private Handlaggning createHandlaggning(List<RollIYrkande> roller)
@@ -180,22 +203,20 @@ class RegelKompletteringAccessGuardTest
       return roll;
    }
 
-   private Uppgift createTilldeladUppgift(String typId, String varde)
+   private UUID givenCorrelationData()
    {
-      var utforare = mock(se.fk.rimfrost.framework.handlaggning.model.Idtyp.class);
-      when(utforare.typId()).thenReturn(typId);
-      when(utforare.varde()).thenReturn(varde);
-      var uppgift = mock(Uppgift.class);
-      when(uppgift.utforare()).thenReturn(utforare);
-      return uppgift;
+      var oulUppgiftId = UUID.randomUUID();
+      var correlationData = mock(OulCorrelationData.class);
+      when(correlationData.oulUppgiftId()).thenReturn(oulUppgiftId);
+      when(oulUppgiftService.getCorrelationData(any())).thenReturn(correlationData);
+      return oulUppgiftId;
    }
 
-   private void givenCorrelationData(Uppgift uppgift)
+   private void givenOulUppgiftUtforare(UUID oulUppgiftId, String typId, String varde) throws Exception
    {
-      var correlationData = mock(OulCorrelationData.class);
-      when(correlationData.oulUppgiftId()).thenReturn(UUID.randomUUID());
-      when(correlationData.uppgift()).thenReturn(uppgift);
-      when(oulUppgiftService.getCorrelationData(any())).thenReturn(correlationData);
+      when(oulUppgiftService.getOulUppgiftUtforare(oulUppgiftId))
+            .thenReturn(Optional.of(se.fk.rimfrost.framework.regel.oul.logic.entity.ImmutableIdtyp.builder()
+                  .typId(typId).varde(varde).build()));
    }
 
    private void givenHandlaggareIdentity(String typId, String varde)
@@ -206,5 +227,16 @@ class RegelKompletteringAccessGuardTest
    private static se.fk.rimfrost.framework.sid.model.Idtyp sidIdtyp(String typId, String varde)
    {
       return se.fk.rimfrost.framework.sid.model.ImmutableIdtyp.builder().typId(typId).varde(varde).build();
+   }
+
+   private static Response.Status expectedStatus(OulServiceException.ErrorType errorType)
+   {
+      return switch (errorType)
+      {
+         case NOT_FOUND -> Response.Status.NOT_FOUND;
+         case BAD_REQUEST -> Response.Status.BAD_REQUEST;
+         case SERVICE_UNAVAILABLE -> Response.Status.SERVICE_UNAVAILABLE;
+         default -> Response.Status.INTERNAL_SERVER_ERROR;
+      };
    }
 }
