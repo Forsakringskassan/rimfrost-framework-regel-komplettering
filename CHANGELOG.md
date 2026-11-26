@@ -2,6 +2,12 @@
 
 Changelog of rimfrost-framework-regel-komplettering.
 
+## 0.4.4 (2026-11-26)
+
+### Bug Fixes
+
+-  Use OUL for utforare assignment check ([f15b6](https://github.com/Forsakringskassan/rimfrost-framework-regel-komplettering/commit/f15b6083ae06a06) Lars Persson)  
+
 ## 0.4.3 (2026-11-20)
 
 ### Bug Fixes
